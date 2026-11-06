@@ -86,6 +86,29 @@ list in `assets/config.js`: give each one its IP address on your home network.
 Optionally add a `port` the device always has open for a more reliable check
 (Apple TV: `7000`). Find an Apple TV's IP in **Settings → Network**.
 
+### Wake-on-LAN (turn the computer on)
+
+Devices with a MAC address in `local-settings.json` get a **Wake** button while
+they're offline. The key is the device's `id` from `assets/config.js`:
+
+```json
+{
+  "wakeOnLan": { "computer": "AA:BB:CC:DD:EE:FF" }
+}
+```
+
+Find the MAC from the Pi while the computer is **on**:
+`ping -c 1 10.0.10.132 && ip neigh show 10.0.10.132` (the `lladdr` value).
+
+The computer has to allow it, once:
+- It must be connected with an **Ethernet cable** (Wake-on-LAN over Wi-Fi rarely works).
+- **BIOS/UEFI:** turn on *Wake on LAN* (sometimes called *Power On by PCI-E*).
+- **Windows:** Device Manager → your Ethernet adapter → Properties.
+  *Power Management*: tick *Allow this device to wake the computer* and *Only allow
+  a magic packet*. *Advanced*: set *Wake on Magic Packet* to *Enabled*.
+- **Windows:** Control Panel → Power Options → *Choose what the power buttons do* →
+  untick *Turn on fast startup* (it stops Wake-on-LAN working after a shutdown).
+
 ## Show a server's RAM and storage
 
 `agent/deskbuddy-agent.py` is a tiny read-only helper that reports a computer's RAM

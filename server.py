@@ -8,6 +8,7 @@ back to) and adds:
   GET /api/torrents   ->  your uTorrent downloads, via uTorrent's Web UI
   GET /api/weather    ->  current weather + today's high/low (OpenWeatherMap)
   GET /api/ping?host= ->  is a device on your home network online?
+  GET/POST /api/wake  ->  Wake-on-LAN: which devices can be woken / wake one
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -340,6 +341,47 @@ def device_status(host, extra_ports=()):
     return 200, {"host": host, "online": online, "ms": ms if online else None}
 
 
+# ---------- Wake-on-LAN ----------
+WOL_PORTS = (9, 7)
+MAC_RE = re.compile(r"^([0-9A-Fa-f]{2})([:-]?)([0-9A-Fa-f]{2})(\2[0-9A-Fa-f]{2}){4}$")
+
+
+def wake_targets():
+    """Device id -> MAC address, from local-settings.json ("wakeOnLan")."""
+    raw = local_settings().get("wakeOnLan") or {}
+    return {k: v.strip() for k, v in raw.items() if isinstance(v, str) and MAC_RE.match(v.strip())}
+
+
+def wake(device_id, host=""):
+    mac = wake_targets().get(device_id)
+    if not mac:
+        return 404, {"error": "no_mac"}
+    mac_bytes = bytes.fromhex(re.sub(r"[^0-9A-Fa-f]", "", mac))
+    packet = b"\xff" * 6 + mac_bytes * 16
+    targets = ["255.255.255.255"]
+    # Also send to the device's own subnet broadcast (e.g. 10.0.10.255),
+    # which some routers need.
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.version == 4 and ip.is_private:
+            targets.append(str(ipaddress.ip_network(f"{host}/24", strict=False).broadcast_address))
+    except ValueError:
+        pass
+    sent = 0
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        for addr in targets:
+            for port in WOL_PORTS:
+                try:
+                    sock.sendto(packet, (addr, port))
+                    sent += 1
+                except OSError:
+                    pass
+    if not sent:
+        return 503, {"error": "send_failed"}
+    return 200, {"sent": True}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
@@ -360,14 +402,19 @@ class Handler(SimpleHTTPRequestHandler):
         return any(p.startswith(".") and p not in (".", "..") for p in parts) or \
             parts[-1].lower() in PRIVATE_FILES
 
-    def do_GET(self):
+    def addressed_to_us(self):
         # Only answer requests addressed to this dashboard. This blocks "DNS
         # rebinding", where a website points its own name at 127.0.0.1 to read
         # local pages.
         host = (self.headers.get("Host") or "").lower()
-        if host not in (f"{HOST}:{PORT}", f"localhost:{PORT}"):
+        return host in (f"{HOST}:{PORT}", f"localhost:{PORT}")
+
+    def do_GET(self):
+        if not self.addressed_to_us():
             return self.send_json(403, {"error": "forbidden"})
         path = self.path.split("?")[0]
+        if path == "/api/wake":
+            return self.send_json(200, {"ids": sorted(wake_targets())})
         if path == "/api/tailscale":
             return self.send_json(*tailscale_status())
         if path == "/api/torrents":
@@ -382,6 +429,25 @@ class Handler(SimpleHTTPRequestHandler):
         if self.is_private():
             return self.send_json(404, {"error": "not_found"})
         super().do_GET()
+
+    def do_POST(self):
+        if not self.addressed_to_us():
+            return self.send_json(403, {"error": "forbidden"})
+        # Only the dashboard's own pages may send commands.
+        origin = self.headers.get("Origin")
+        if origin and origin.lower() not in (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}"):
+            return self.send_json(403, {"error": "forbidden"})
+        if self.path.split("?")[0] != "/api/wake":
+            return self.send_json(404, {"error": "not_found"})
+        try:
+            length = min(int(self.headers.get("Content-Length") or 0), 10_000)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            return self.send_json(400, {"error": "bad_request"})
+        if not isinstance(body, dict) or not isinstance(body.get("id"), str):
+            return self.send_json(400, {"error": "bad_request"})
+        host = body.get("host") if isinstance(body.get("host"), str) else ""
+        self.send_json(*wake(body["id"], host))
 
     def log_message(self, fmt, *args):
         pass  # keep the terminal quiet
