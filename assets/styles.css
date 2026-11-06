@@ -240,6 +240,22 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .sh-header .spacer { flex: 1; }
 .sh-clock { white-space: nowrap; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
+/* Tabs: each section gets the whole screen, no page scrolling */
+.sh-page { display: flex; flex-direction: column; height: 100vh; }
+.sh-header { flex-wrap: wrap; }
+.sh-titles { min-width: 0; }
+.tabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0 auto; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.tab { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--surface-3); color: var(--text); }
+.tab .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tab .count:empty { display: none; }
+.panel { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.panel[hidden] { display: none; }
+.panel > .ts { flex-shrink: 0; }
+.panel-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; font-size: 13px; }
+.panel .srv-summary { margin-bottom: 0; }
+
 /* ---------- Section headings ---------- */
 .section-head { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 32px 0 12px; }
 .srv-summary + .section-head-row { margin-top: 8px; }
@@ -348,6 +364,10 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .tor-speed, .tor-eta { display: none; }
 }
 @media (max-width: 700px) {
+  .sh-page { height: auto; }
+  .panel { overflow: visible; }
+  .tabs { order: 5; width: 100%; margin: 4px 0 0; }
+  .tab { flex: 1; justify-content: center; padding: 0 8px; }
   .srv-summary { gap: 8px; }
   .srv-stat { padding: 14px; }
   .srv-stat .stat-value { font-size: 22px; }
@@ -404,7 +424,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .lyrics-body { padding: 8px 24px 40vh; }
   .lyric-line { font-size: min(7vh, 30px); margin: 8px auto; }
 
-  .sh-page { padding: 12px 14px; }
+  .sh-page { padding: 10px 12px; }
+  .sh-header .sub { display: none; }
+  .tab { min-height: 40px; padding: 0 14px; font-size: 13px; }
+  .panel { gap: 8px; }
+  .panel-bar { min-height: 30px; }
   .sh-header { margin-bottom: 12px; gap: 10px; }
   .sh-header h1 { font-size: 22px; }
   .sh-header .sub { font-size: 12px; }
@@ -418,7 +442,12 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .section-head-row { margin: 18px 0 8px; }
   .servers { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
   .server { padding: 14px; gap: 12px; }
-  .ts-row, .tor-row { padding: 10px 14px; }
+  .ts-row, .tor-row { padding: 8px 14px; gap: 12px; }
+  .ts-row { grid-template-columns: minmax(0, 1fr) 160px 150px; }
+  .tor-row { grid-template-columns: minmax(0, 1fr) 200px 140px; }
+  .ts-row .ip, .ts-row .status, .tor-row .tor-prog, .tor-row .status { grid-column: auto; grid-row: auto; }
+  .ts-row .ip { margin-left: -8px; }
+  .ts-row .server-icon { width: 34px; height: 34px; }
   .open-btn { padding: 9px 12px; }
 }
 

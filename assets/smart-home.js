@@ -8,6 +8,23 @@
     $('sh-summary').textContent = [summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
   };
 
+  // ---------- Tabs ----------
+  const TABS = ['servers', 'downloads', 'tailscale'];
+  function showTab(name) {
+    if (!TABS.includes(name)) name = 'servers';
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === name);
+      t.setAttribute('aria-selected', t.dataset.tab === name);
+    });
+    TABS.forEach(t => { $(`panel-${t}`).hidden = t !== name; });
+    history.replaceState(null, '', `#${name}`);
+  }
+  $('tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (t) showTab(t.dataset.tab);
+  });
+  showTab(location.hash.slice(1));
+
   // ---------- Servers ----------
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };
   const host = url => { try { return new URL(url).host; } catch (e) { return url; } };
@@ -48,7 +65,10 @@
     $('srv-down').textContent = done.length - sum.up;
     $('srv-down').classList.toggle('bad', done.length - sum.up > 0);
     $('srv-ms').textContent = live.length ? Math.round(live.reduce((a, s) => a + s.ms, 0) / live.length) + ' ms' : '–';
-    if (done.length) summary.servers = `${sum.up}/${servers.length} servers up`;
+    if (done.length) {
+      summary.servers = `${sum.up}/${servers.length} servers up`;
+      $('tab-servers').textContent = `${sum.up}/${servers.length}`;
+    }
     renderSummary();
   }
 
@@ -106,6 +126,7 @@
     if (d.error) {
       $('tailscale').innerHTML = `<p class="ts-empty">${TS_ERRORS[d.error] || TS_ERRORS.not_running}</p>`;
       $('ts-meta').textContent = '';
+      $('tab-tailscale').textContent = '';
       summary.tailscale = '';
       return renderSummary();
     }
@@ -114,6 +135,7 @@
     $('ts-meta').textContent = [`${s.online} of ${s.total} online`, d.tailnet, exit ? `Exit node: ${exit.name}` : ''].filter(Boolean).join(' · ');
     $('tailscale').innerHTML = [d.self, ...d.peers].map(tsRow).join('');
     summary.tailscale = `${s.online}/${s.total} on Tailscale`;
+    $('tab-tailscale').textContent = `${s.online}/${s.total}`;
     renderSummary();
   }
 
@@ -135,6 +157,7 @@
     if (!d.connected) {
       $('torrents').innerHTML = `<p class="ts-empty">${T.ERRORS[d.error] || T.ERRORS.unreachable}</p>`;
       $('tor-meta').textContent = '';
+      $('tab-downloads').textContent = '';
       summary.downloads = '';
       return renderSummary();
     }
@@ -160,6 +183,7 @@
       </div>`;
     }).join('') : '<p class="ts-empty">No torrents in uTorrent.</p>';
     summary.downloads = active.length ? `${active.length} downloading` : '';
+    $('tab-downloads').textContent = active.length || '';
     renderSummary();
   }
   checkTorrents();
