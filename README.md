@@ -11,8 +11,10 @@ must be opened at exactly that address.
 - **Mac / Linux:** `./start.sh`
 - **Windows:** double-click `start.bat`
 
-Both just run `python3 -m http.server 9090 --bind 127.0.0.1` and open the browser.
-(Python 3 needs to be installed.)
+Both run `server.py` (Python 3 needed, nothing to install) and open the browser.
+`server.py` serves the dashboard and reads your Tailscale devices from the
+Tailscale app on this computer (`tailscale status --json`). It only listens on
+127.0.0.1.
 
 Want to see it without logging in? Open `http://127.0.0.1:9090/?demo`.
 
@@ -23,9 +25,9 @@ Everything lives in [`assets/config.js`](assets/config.js):
 - **Spotify:** your app's Client ID and Redirect URI. DeskBuddy uses Spotify's
   PKCE login, which is made for browser apps — the **Client Secret is not used and
   must never be put in this project**.
+- **Light:** the name of your smart light.
 - **Servers:** the list shown on Smart Home → Servers. Jellyfin servers also show
-  their name and version. An optional `tailscaleUrl` is tried when the main address
-  doesn't answer.
+  their name and version.
 
 ## Spotify notes
 
@@ -38,5 +40,5 @@ Everything lives in [`assets/config.js`](assets/config.js):
 
 ## Status
 
-- Clock, Spotify, lyrics, server checks: **live**.
-- Smart home devices: **demo data** until a smart home system is connected.
+- Clock, Spotify, lyrics, server checks, Tailscale devices: **live**.
+- Smart light: **preview only** until the light's brand is connected.

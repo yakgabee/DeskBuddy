@@ -1,127 +1,18 @@
 (() => {
   const $ = id => document.getElementById(id);
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   DeskClock.start({ short: $('sh-clock') });
 
-  let devices = DeskDevices.load();
-  let room = 'All';
-
-  const ICON_ON = {
-    light: '#f59e0b', plug: '#3b82f6', thermostat: '#f97316',
-    lock: '#22c55e', camera: '#ef4444', blinds: '#0ea5e9',
+  const summary = { light: '', servers: '', tailscale: '' };
+  const renderSummary = () => {
+    $('sh-summary').textContent = [summary.light, summary.servers, summary.tailscale].filter(Boolean).join(' · ');
   };
-
-  function stateText(d) {
-    switch (d.type) {
-      case 'light': return d.on ? `On · ${d.brightness}%` : 'Off';
-      case 'plug': return d.on ? 'On' : 'Off';
-      case 'thermostat': return `${d.mode} · set to ${d.target}°F`;
-      case 'lock': return d.on ? 'Locked' : 'Unlocked';
-      case 'camera': return d.on ? 'Recording' : 'Off';
-      case 'blinds': return d.position === 0 ? 'Closed' : `Open ${d.position}%`;
-    }
-  }
-
-  function body(d) {
-    switch (d.type) {
-      case 'light':
-        return `<input type="range" min="1" max="100" value="${d.brightness}" data-act="brightness" ${d.on ? '' : 'disabled'} aria-label="Brightness">`;
-      case 'thermostat':
-        return `<div class="thermo"><div class="thermo-temp">${d.target}°</div>
-          <div class="thermo-btns"><button class="round-btn" data-act="down">−</button><button class="round-btn" data-act="up">+</button></div></div>`;
-      case 'camera':
-        return `<div class="cam-preview">${d.on ? '<span class="live">Live</span>Camera feed' : 'Camera off'}</div>`;
-      case 'blinds':
-        return `<input type="range" min="0" max="100" value="${d.position}" data-act="position" aria-label="Blinds position">`;
-      default:
-        return '';
-    }
-  }
-
-  function render() {
-    const rooms = ['All', ...new Set(devices.map(d => d.room))];
-    $('rooms').innerHTML = rooms.map(r =>
-      `<button class="room-chip ${r === room ? 'active' : ''}" data-room="${r}">${r}</button>`).join('');
-
-    const list = room === 'All' ? devices : devices.filter(d => d.room === room);
-    $('devices').innerHTML = list.map(d => {
-      const hasToggle = d.type !== 'thermostat' && d.type !== 'blinds';
-      const isOn = d.type === 'blinds' ? d.position > 0 : d.on;
-      return `<article class="device card ${isOn ? 'on' : ''}" data-id="${d.id}" style="--icon-on:${ICON_ON[d.type]}">
-        <div class="device-top">
-          <div class="device-icon">${icon(d.type === 'lock' && !d.on ? 'unlock' : d.icon)}</div>
-          ${hasToggle ? `<button class="toggle ${d.on ? 'on' : ''}" data-act="toggle" aria-label="Toggle ${d.name}"></button>` : ''}
-        </div>
-        <div>
-          <div class="device-name">${d.name}</div>
-          <div class="device-state">${room === 'All' ? d.room + ' · ' : ''}${stateText(d)}</div>
-        </div>
-        <div class="device-body">${body(d)}</div>
-      </article>`;
-    }).join('');
-
-    const s = DeskDevices.summary(devices);
-    $('sh-summary').textContent = `${s.active} devices on · Thermostat ${s.temp} · Front door ${s.door.toLowerCase()}`;
-  }
-
-  function update(id, fn) {
-    const d = devices.find(x => x.id === id);
-    if (!d) return;
-    fn(d);
-    DeskDevices.save(devices);
-    render();
-  }
-
-  $('rooms').addEventListener('click', e => {
-    const b = e.target.closest('[data-room]');
-    if (b) { room = b.dataset.room; render(); }
-  });
-
-  $('devices').addEventListener('click', e => {
-    const b = e.target.closest('button[data-act]');
-    if (!b) return;
-    const id = b.closest('.device').dataset.id;
-    update(id, d => {
-      if (b.dataset.act === 'toggle') d.on = !d.on;
-      if (b.dataset.act === 'up') d.target = Math.min(85, d.target + 1);
-      if (b.dataset.act === 'down') d.target = Math.max(55, d.target - 1);
-    });
-  });
-
-  $('devices').addEventListener('change', e => {
-    const r = e.target.closest('input[data-act]');
-    if (!r) return;
-    const id = r.closest('.device').dataset.id;
-    update(id, d => { d[r.dataset.act] = Number(r.value); });
-  });
-
-  const SCENES = {
-    morning: d => { if (d.type === 'light') { d.on = d.room !== 'Bedroom' || d.id === 'br-lamp'; d.brightness = 90; }
-                    if (d.id === 'kt-coffee') d.on = true; if (d.type === 'blinds') d.position = 100; },
-    focus:   d => { if (d.type === 'light') d.on = d.room === 'Office'; if (d.id === 'of-desk') d.brightness = 100;
-                    if (d.id === 'lr-tv') d.on = false; },
-    movie:   d => { if (d.type === 'light') { d.on = d.id === 'lr-lamp'; d.brightness = 20; } if (d.id === 'lr-tv') d.on = true; },
-    away:    d => { if (d.type === 'light' || d.type === 'plug') d.on = false; if (d.type === 'lock') d.on = true; if (d.type === 'camera') d.on = true; },
-    night:   d => { if (d.type === 'light' || d.type === 'plug') d.on = false; if (d.type === 'lock') d.on = true;
-                    if (d.type === 'blinds') d.position = 0; if (d.type === 'thermostat') d.target = 66; },
-  };
-
-  $('scenes').addEventListener('click', e => {
-    const b = e.target.closest('[data-scene]');
-    if (!b) return;
-    devices.forEach(SCENES[b.dataset.scene]);
-    DeskDevices.save(devices);
-    document.querySelectorAll('.scene').forEach(x => x.classList.toggle('active', x === b));
-    render();
-  });
-
-  render();
 
   // ---------- Tabs ----------
   function showTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     $('panel-devices').hidden = name !== 'devices';
     $('panel-servers').hidden = name !== 'servers';
-    $('draft-badge').hidden = name !== 'devices';
     history.replaceState(null, '', name === 'servers' ? '#servers' : '#');
   }
   $('tabs').addEventListener('click', e => {
@@ -129,13 +20,63 @@
     if (t) showTab(t.dataset.tab);
   });
 
+  // ---------- Smart light ----------
+  const lightCfg = DeskLight.config();
+  let light = DeskLight.load();
+  $('light-name').textContent = lightCfg.name;
+  $('light-notice').hidden = !!lightCfg.connected;
+
+  $('swatches').innerHTML = Object.entries(DeskLight.COLORS).map(([key, c]) =>
+    `<button class="swatch" data-color="${key}" style="--sw:${c.hex}" aria-label="${c.label}" title="${c.label}"></button>`).join('');
+  $('scenes').innerHTML = Object.entries(DeskLight.SCENES).map(([key, sc]) =>
+    `<button class="scene" data-scene="${key}"><span>${icon(sc.icon, 16)}</span>${sc.label}</button>`).join('')
+    + `<button class="scene" data-scene="off"><span>${icon('power', 16)}</span>All off</button>`;
+
+  function renderLight() {
+    const c = DeskLight.COLORS[light.color] || DeskLight.COLORS.warm;
+    const el = $('light');
+    el.classList.toggle('on', light.on);
+    el.style.setProperty('--light', c.hex);
+    $('light-state').textContent = DeskLight.stateText(light) + (light.on ? ` · ${c.label}` : '');
+    $('light-toggle').classList.toggle('on', light.on);
+    $('light-bright').value = light.brightness;
+    $('light-bright').disabled = !light.on;
+    $('light-bright').style.setProperty('--fill', `${light.brightness}%`);
+    $('light-bright-val').textContent = `${light.brightness}%`;
+    $('light-color-name').textContent = c.label;
+    document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.color === light.color));
+    document.querySelectorAll('.scene').forEach(s => s.classList.toggle('active', s.dataset.scene === light.scene));
+    summary.light = `Light ${light.on ? `on · ${light.brightness}%` : 'off'}`;
+    renderSummary();
+  }
+
+  function setLight(changes, scene = null) {
+    light = { ...light, ...changes, scene };
+    DeskLight.save(light);
+    renderLight();
+  }
+
+  $('light-toggle').onclick = () => setLight({ on: !light.on });
+  $('light-bright').oninput = e => setLight({ brightness: Number(e.target.value) });
+  $('swatches').onclick = e => {
+    const b = e.target.closest('[data-color]');
+    if (b) setLight({ color: b.dataset.color, on: true });
+  };
+  $('scenes').onclick = e => {
+    const b = e.target.closest('[data-scene]');
+    if (!b) return;
+    const key = b.dataset.scene;
+    if (key === 'off') return setLight({ on: false }, 'off');
+    const { on, brightness, color } = DeskLight.SCENES[key];
+    setLight({ on, brightness, color }, key);
+  };
+  renderLight();
+
   // ---------- Servers ----------
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };
-  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const host = url => { try { return new URL(url).host; } catch (e) { return url; } };
-  let servers = DeskServers.list().map(s => ({ ...s, status: 'checking' }));
-
   const row = (label, value) => `<div class="info-row"><span>${label}</span><span>${value}</span></div>`;
+  let servers = DeskServers.list().map(s => ({ ...s, status: 'checking' }));
 
   function renderServers() {
     const order = { up: 0, warn: 1, checking: 2, down: 3 };
@@ -146,23 +87,20 @@
         live ? row('Response', `${s.ms} ms`) : '',
         s.version ? row('Version', esc(s.version)) : '',
         s.serverName ? row('Server name', esc(s.serverName)) : '',
-        live && s.tailscaleUrl ? row('Reached via', s.via) : '',
-        s.tailscaleUrl ? row('Tailscale', `<code>${esc(host(s.tailscaleUrl))}</code>`) : '',
       ].join('');
-      const openUrl = s.url && live ? (s.via === 'Tailscale' ? s.tailscaleUrl : s.url) : s.url;
       return `<article class="server card ${s.status}">
         <div class="server-top">
           <div class="server-icon">${icon(s.icon || 'server')}</div>
           <div class="grow">
             <div class="server-name">${esc(s.name)}</div>
-            <div class="server-desc">${esc(s.desc || '')}</div>
+            <div class="server-desc">${esc(s.desc)}</div>
           </div>
           <span class="status ${s.status}">${STATUS[s.status]}</span>
         </div>
         ${rows ? `<div class="info">${rows}</div>` : ''}
         <div class="server-foot">
           <code>${esc(host(s.url))}</code>
-          <a class="open-btn" href="${esc(openUrl)}" target="_blank" rel="noopener">Open ${icon('external', 14)}</a>
+          <a class="open-btn" href="${esc(s.url)}" target="_blank" rel="noopener">Open ${icon('external', 14)}</a>
         </div>
       </article>`;
     }).join('') : '<p class="muted">No servers yet. Add them in <code>assets/config.js</code>.</p>';
@@ -175,22 +113,102 @@
     $('srv-down').textContent = done.length - sum.up;
     $('srv-down').classList.toggle('bad', done.length - sum.up > 0);
     $('srv-ms').textContent = live.length ? Math.round(live.reduce((a, s) => a + s.ms, 0) / live.length) + ' ms' : '–';
+    if (done.length) summary.servers = `${sum.up}/${servers.length} servers up`;
+    renderSummary();
   }
 
-  async function checkServers() {
+  // ---------- Tailscale ----------
+  const fmtBytes = n => {
+    if (!n) return '0 B';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1000)));
+    return `${(n / 1000 ** i).toFixed(i ? 1 : 0)} ${u[i]}`;
+  };
+  const ago = iso => {
+    if (!iso) return 'Offline';
+    const m = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (m < 1) return 'Last seen just now';
+    if (m < 60) return `Last seen ${m} min ago`;
+    if (m < 1440) return `Last seen ${Math.round(m / 60)} h ago`;
+    return `Last seen ${Math.round(m / 1440)} d ago`;
+  };
+  const osIcon = os => {
+    const o = (os || '').toLowerCase();
+    if (o === 'ios' || o === 'android') return 'phone';
+    if (o === 'macos' || o === 'windows') return 'laptop';
+    return 'server';
+  };
+  const TS_ERRORS = {
+    no_server: 'Start DeskBuddy with <code>start.sh</code> or <code>start.bat</code> to see your Tailscale devices.',
+    not_installed: 'Tailscale isn\'t installed on this computer.',
+    not_running: 'Tailscale isn\'t running on this computer. Open the Tailscale app and sign in.',
+  };
+
+  function tsRow(n) {
+    const ip = n.ips.find(x => x.includes('.')) || n.ips[0] || '';
+    const conn = n.self ? 'This device' : !n.online ? '' : n.direct ? 'Direct' : n.relay ? `Relay · ${esc(n.relay)}` : '';
+    const tags = [
+      n.self ? '<span class="tag">This device</span>' : '',
+      n.exitNode ? '<span class="tag accent">Exit node</span>' : '',
+    ].join('');
+    return `<div class="ts-row ${n.online ? '' : 'offline'}">
+      <div class="ts-dev">
+        <div class="server-icon">${icon(osIcon(n.os))}</div>
+        <div class="grow">
+          <div class="server-name">${esc(n.name)} ${tags}</div>
+          <div class="server-desc">${esc(n.os)}${n.dnsName ? ` · ${esc(n.dnsName)}` : ''}</div>
+        </div>
+      </div>
+      <button class="ip" data-copy="${esc(ip)}" title="Copy IP"><code>${esc(ip)}</code>${icon('copy', 14)}</button>
+      <span class="status ${n.online ? 'up' : 'down'}">${n.online ? 'Online' : ago(n.lastSeen)}</span>
+      <span class="ts-conn">${n.self ? '' : conn}</span>
+      <span class="ts-traffic">${n.online && !n.self ? `↓ ${fmtBytes(n.rxBytes)} · ↑ ${fmtBytes(n.txBytes)}` : ''}</span>
+    </div>`;
+  }
+
+  async function checkTailscale() {
+    const d = await DeskTailscale.status();
+    if (d.error) {
+      $('tailscale').innerHTML = `<p class="ts-empty">${TS_ERRORS[d.error] || TS_ERRORS.not_running}</p>`;
+      $('ts-meta').textContent = '';
+      summary.tailscale = '';
+      return renderSummary();
+    }
+    const s = DeskTailscale.summary(d);
+    const exit = d.peers.find(p => p.exitNode);
+    $('ts-meta').textContent = [`${s.online} of ${s.total} online`, d.tailnet, exit ? `Exit node: ${exit.name}` : ''].filter(Boolean).join(' · ');
+    $('tailscale').innerHTML = [d.self, ...d.peers].map(tsRow).join('');
+    summary.tailscale = `${s.online}/${s.total} on Tailscale`;
+    renderSummary();
+  }
+
+  $('tailscale').addEventListener('click', async e => {
+    const b = e.target.closest('[data-copy]');
+    if (!b) return;
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy);
+      b.classList.add('copied');
+      b.querySelector('svg').outerHTML = icon('check', 14);
+      setTimeout(() => { b.classList.remove('copied'); b.querySelector('svg').outerHTML = icon('copy', 14); }, 1200);
+    } catch (err) { /* clipboard blocked */ }
+  });
+
+  // ---------- Refresh ----------
+  async function checkAll() {
     $('srv-refresh').disabled = true;
     $('srv-refresh').textContent = 'Checking…';
-    servers = await DeskServers.checkAll();
+    const [results] = await Promise.all([DeskServers.checkAll(), checkTailscale()]);
+    servers = results;
     $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     $('srv-refresh').disabled = false;
     $('srv-refresh').textContent = 'Check now';
     renderServers();
   }
 
-  $('srv-refresh').onclick = checkServers;
+  $('srv-refresh').onclick = checkAll;
   renderServers();
-  checkServers();
-  setInterval(checkServers, 30000);
+  checkAll();
+  setInterval(checkAll, 30000);
 
   if (location.hash === '#servers') showTab('servers');
 })();

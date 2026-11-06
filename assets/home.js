@@ -6,16 +6,18 @@
   DeskClock.start({ time: $('time'), date: $('date'), greeting: $('greeting') });
 
   // ---------- Smart home summary ----------
-  const s = DeskDevices.summary(DeskDevices.load());
-  $('stat-on').textContent = s.active;
-  $('stat-temp').textContent = s.temp;
-  $('stat-lock').textContent = s.door;
-  const refreshServers = async () => {
-    const sv = DeskServers.summary(await DeskServers.checkAll());
+  const light = DeskLight.load();
+  $('stat-light').textContent = light.on ? `${light.brightness}%` : 'Off';
+  $('stat-light-label').textContent = DeskLight.config().name;
+  const refreshStatus = async () => {
+    const [servers, ts] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status()]);
+    const sv = DeskServers.summary(servers);
     $('stat-servers').textContent = `${sv.up}/${sv.total}`;
+    const t = DeskTailscale.summary(ts);
+    $('stat-ts').textContent = t ? `${t.online}/${t.total}` : '–';
   };
-  refreshServers();
-  setInterval(refreshServers, 60000);
+  refreshStatus();
+  setInterval(refreshStatus, 60000);
 
   // ---------- Helpers ----------
   const fmt = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;

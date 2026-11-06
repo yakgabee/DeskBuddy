@@ -9,10 +9,16 @@ window.DESKBUDDY_CONFIG = {
     redirectUri: 'http://127.0.0.1:9090/',
   },
 
+  // Your smart light (works with Alexa). Controls are a preview until the
+  // light's brand is connected.
+  light: {
+    name: 'Smart Light',
+    connected: false,
+  },
+
   // Servers shown on Smart Home → Servers.
   // type 'jellyfin' reads the server name and version from Jellyfin.
   // type 'web' just checks that the address answers.
-  // tailscaleUrl (optional) is tried when the main address doesn't answer.
   servers: [
     {
       id: 'jellyfin',
@@ -21,10 +27,12 @@ window.DESKBUDDY_CONFIG = {
       icon: 'film',
       type: 'jellyfin',
       url: 'https://www.gabe-server.com',
-      tailscaleUrl: 'http://192.168.1.10:8096',
     },
     // Add more like this:
     // { id: 'homeassistant', name: 'Home Assistant', desc: 'Home automation', icon: 'home',
     //   type: 'web', url: 'http://192.168.1.10:8123' },
   ],
+
+  // Tailscale devices are read from the Tailscale app on this computer
+  // (via server.py) — nothing to set up here.
 };

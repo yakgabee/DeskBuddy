@@ -22,24 +22,43 @@
     </header>
 
     <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="devices"><span data-icon="home" data-size="16"></span>Devices</button>
+      <button class="tab active" data-tab="devices"><span data-icon="light" data-size="16"></span>Devices</button>
       <button class="tab" data-tab="servers"><span data-icon="server" data-size="16"></span>Servers <span class="count" id="srv-count"></span></button>
     </nav>
 
+    <!-- Devices: smart light -->
     <div class="panel" id="panel-devices">
-    <div class="section-title">Scenes</div>
-    <div class="scenes" id="scenes">
-      <button class="scene" data-scene="morning"><span data-icon="sun" data-size="16"></span>Good Morning</button>
-      <button class="scene" data-scene="focus"><span data-icon="headphones" data-size="16"></span>Focus</button>
-      <button class="scene" data-scene="movie"><span data-icon="film" data-size="16"></span>Movie Night</button>
-      <button class="scene" data-scene="away"><span data-icon="leave" data-size="16"></span>Away</button>
-      <button class="scene" data-scene="night"><span data-icon="moon" data-size="16"></span>Good Night</button>
+      <div class="notice" id="light-notice">
+        <span data-icon="info" data-size="18"></span>
+        <div><b>Preview only.</b> DeskBuddy can't reach your Alexa light yet, so these controls don't change the real light. Tell Claude your light's brand to connect it.</div>
+      </div>
+
+      <section class="light card" id="light">
+        <div class="light-main">
+          <div class="light-orb" id="light-orb" data-icon="light" data-size="40"></div>
+          <div class="grow">
+            <div class="light-name" id="light-name"></div>
+            <div class="light-state" id="light-state"></div>
+          </div>
+          <button class="toggle big" id="light-toggle" aria-label="Turn light on or off"></button>
+        </div>
+
+        <div class="light-section">
+          <div class="light-label"><span>Brightness</span><span id="light-bright-val"></span></div>
+          <input type="range" min="1" max="100" id="light-bright" class="bright-slider" aria-label="Brightness">
+        </div>
+
+        <div class="light-section">
+          <div class="light-label"><span>Colour</span><span id="light-color-name"></span></div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+      </section>
+
+      <div class="section-title">Scenes</div>
+      <div class="scenes" id="scenes"></div>
     </div>
 
-    <div class="rooms" id="rooms"></div>
-    <section class="devices" id="devices"></section>
-    </div>
-
+    <!-- Servers + Tailscale -->
     <div class="panel" id="panel-servers" hidden>
       <div class="srv-summary">
         <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
@@ -50,17 +69,26 @@
           <button class="open-btn" id="srv-refresh">Check now</button>
         </div>
       </div>
+
+      <h2 class="section-head">Servers</h2>
       <section class="servers" id="servers"></section>
+
+      <div class="section-head-row">
+        <h2 class="section-head">Tailscale</h2>
+        <span class="muted" id="ts-meta"></span>
+      </div>
+      <section class="ts card" id="tailscale">
+        <p class="ts-empty">Loading Tailscale…</p>
+      </section>
     </div>
   </main>
-
-  <div class="draft-badge" id="draft-badge">Devices are demo data</div>
 
   <script src="assets/config.js"></script>
   <script src="assets/icons.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
   <script src="assets/servers.js"></script>
+  <script src="assets/tailscale.js"></script>
   <script src="assets/smart-home.js"></script>
 </body>
 </html>
