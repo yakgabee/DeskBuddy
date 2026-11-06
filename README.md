@@ -18,6 +18,20 @@ downloads. It only listens on 127.0.0.1.
 
 Want to see it without logging in? Open `http://127.0.0.1:9090/?demo`.
 
+## Running on a 7-inch display
+
+The layout is tuned for 7-inch landscape screens (800×480 and 1024×600): the home
+screen fits without scrolling and buttons are sized for touch. Larger monitors
+and phones work too.
+
+To run it full-screen like an appliance, open it in kiosk mode:
+
+```bash
+chromium-browser --kiosk --noerrdialogs --disable-infobars http://127.0.0.1:9090/
+```
+
+On Windows: `start chrome --kiosk http://127.0.0.1:9090/`. Use `Alt+F4` to exit.
+
 ## Settings
 
 Everything lives in [`assets/config.js`](assets/config.js):

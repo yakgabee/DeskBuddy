@@ -27,13 +27,13 @@
         <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
         <div class="srv-stat card"><div class="stat-value" id="srv-down">–</div><div class="stat-label">Stopped</div></div>
         <div class="srv-stat card"><div class="stat-value" id="srv-ms">–</div><div class="stat-label">Avg response</div></div>
-        <div class="srv-stat card srv-checked">
-          <div><div class="stat-value" id="srv-checked">–</div><div class="stat-label">Last checked</div></div>
-          <button class="open-btn" id="srv-refresh">Check now</button>
-        </div>
       </div>
 
-      <h2 class="section-head">Servers</h2>
+      <div class="section-head-row centered">
+        <h2 class="section-head">Servers</h2>
+        <span class="muted">Checked <span id="srv-checked">–</span></span>
+        <button class="open-btn head-btn" id="srv-refresh">Check now</button>
+      </div>
       <section class="servers" id="servers"></section>
 
       <div class="section-head-row" id="downloads">
