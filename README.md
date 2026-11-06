@@ -31,7 +31,7 @@ Everything lives in [`assets/config.js`](assets/config.js):
 
 ## Connect your Evolux light
 
-Evolux bulbs are Smart Life (Tuya) devices. DeskBuddy controls the bulb directly
+Your Evolux bulb shows up as Smart Life in Alexa, which means it's a Tuya device. DeskBuddy controls it directly
 over your home Wi-Fi using [tinytuya](https://github.com/jasonacox/tinytuya). Alexa
 keeps working as before. You only do this once (about 10 minutes).
 
