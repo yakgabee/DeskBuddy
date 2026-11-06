@@ -133,11 +133,11 @@
     $('lyrics-body').innerHTML = '<p class="lyrics-status">Loading lyrics…</p>';
     const result = track.lyrics
       ? { synced: true, lines: track.lyrics }
-      : await Lyrics.get(track);
+      : track.isEpisode ? null : await Lyrics.get(track);
     if (!track || track.id !== id) return; // song changed while loading
     lyrics = result;
     if (!result || !result.lines.length) {
-      $('lyrics-body').innerHTML = '<p class="lyrics-status">No lyrics found for this song.</p>';
+      $('lyrics-body').innerHTML = `<p class="lyrics-status">${track.isEpisode ? 'Lyrics aren\'t available for podcasts.' : 'No lyrics found for this song.'}</p>`;
       return;
     }
     $('lyrics-body').classList.toggle('plain', !result.synced);
@@ -198,7 +198,10 @@
     return `To connect Spotify, open DeskBuddy at <code>${esc(want)}</code> (run <code>start.sh</code> or <code>start.bat</code>).`;
   };
 
+  let pauseUntil = 0; // set when Spotify asks us to slow down
+
   async function pollSpotify() {
+    if (Date.now() < pauseUntil) return;
     if (!Spotify.isLoggedIn()) {
       track = null;
       $('btn-disconnect').hidden = true;
@@ -218,6 +221,8 @@
       setTrack(t);
     } catch (e) {
       if (e.code === 'auth') return pollSpotify();
+      if (e.code === 'rate') pauseUntil = Date.now() + e.retryAfter * 1000;
+      // Keep showing the last song; just note the connection problem.
       $('np-source').textContent = 'Can\'t reach Spotify right now';
     }
   }

@@ -209,14 +209,27 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def is_private(self):
+        # Hidden files/folders (.git …) and private settings are never served.
+        rel = os.path.relpath(self.translate_path(self.path), ROOT)
+        parts = rel.replace("\\", "/").split("/")
+        return any(p.startswith(".") and p not in (".", "..") for p in parts) or \
+            parts[-1].lower() in PRIVATE_FILES
+
     def do_GET(self):
+        # Only answer requests addressed to this dashboard. This blocks "DNS
+        # rebinding", where a website points its own name at 127.0.0.1 to read
+        # local pages.
+        host = (self.headers.get("Host") or "").lower()
+        if host not in (f"{HOST}:{PORT}", f"localhost:{PORT}"):
+            return self.send_json(403, {"error": "forbidden"})
         path = self.path.split("?")[0]
         if path == "/api/tailscale":
             return self.send_json(*tailscale_status())
         if path == "/api/torrents":
             return self.send_json(*utorrent.status())
-        if os.path.basename(self.translate_path(self.path)) in PRIVATE_FILES:
-            return self.send_json(404, {"error": "not_found"})  # never serve private settings
+        if self.is_private():
+            return self.send_json(404, {"error": "not_found"})
         super().do_GET()
 
     def log_message(self, fmt, *args):

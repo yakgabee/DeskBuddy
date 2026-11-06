@@ -15,13 +15,22 @@
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const randomString = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
+  const fail = (message, code, extra = {}) => Object.assign(new Error(message), { code, ...extra });
+
   async function tokenRequest(params) {
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_id: cfg.clientId, ...params }),
-    });
-    if (!res.ok) throw new Error(`Spotify token error ${res.status}`);
+    let res;
+    try {
+      res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: cfg.clientId, ...params }),
+      });
+    } catch (e) {
+      throw fail('Can\'t reach Spotify', 'network');
+    }
+    // 400/401 means Spotify rejected the login (e.g. access was removed).
+    if (res.status === 400 || res.status === 401) throw fail('Spotify login expired', 'auth');
+    if (!res.ok) throw fail(`Spotify token error ${res.status}`, 'network');
     const t = await res.json();
     const prev = store.get() || {};
     const saved = {
@@ -33,26 +42,39 @@
     return saved;
   }
 
-  async function accessToken() {
+  // Returns a valid access token. Only logs out when Spotify itself rejects the
+  // login — a Wi-Fi blip keeps you logged in and just retries later.
+  async function accessToken(forceRefresh = false) {
     const s = store.get();
-    if (!s) return null;
-    if (Date.now() < s.expiresAt) return s.accessToken;
+    if (!s) throw fail('Not logged in', 'auth');
+    if (!forceRefresh && Date.now() < s.expiresAt) return s.accessToken;
     try {
       return (await tokenRequest({ grant_type: 'refresh_token', refresh_token: s.refreshToken })).accessToken;
     } catch (e) {
-      store.clear();
-      return null;
+      if (e.code === 'auth') store.clear();
+      throw e;
     }
   }
 
-  async function api(path, method = 'GET') {
-    const token = await accessToken();
-    if (!token) throw Object.assign(new Error('Not logged in'), { code: 'auth' });
-    const res = await fetch(API + path, { method, headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 401) { store.clear(); throw Object.assign(new Error('Session expired'), { code: 'auth' }); }
-    if (res.status === 403 && method !== 'GET') throw Object.assign(new Error('Playback controls need Spotify Premium'), { code: 'premium' });
+  async function api(path, method = 'GET', retried = false) {
+    const token = await accessToken(retried);
+    let res;
+    try {
+      res = await fetch(API + path, { method, headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) {
+      throw fail('Can\'t reach Spotify', 'network');
+    }
+    if (res.status === 401) {
+      if (!retried) return api(path, method, true); // token went stale early: refresh once
+      store.clear();
+      throw fail('Spotify login expired', 'auth');
+    }
+    if (res.status === 429) {
+      throw fail('Spotify asked us to slow down', 'rate', { retryAfter: Number(res.headers.get('Retry-After')) || 30 });
+    }
+    if (res.status === 403 && method !== 'GET') throw fail('Playback controls need Spotify Premium', 'premium');
     if (res.status === 204 || res.status === 202) return null;
-    if (!res.ok) throw new Error(`Spotify error ${res.status}`);
+    if (!res.ok) throw fail(`Spotify error ${res.status}`, 'network');
     const text = await res.text();
     return text ? JSON.parse(text) : null;
   }

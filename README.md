@@ -24,13 +24,28 @@ The layout is tuned for 7-inch landscape screens (800×480 and 1024×600): the h
 screen fits without scrolling and buttons are sized for touch. Larger monitors
 and phones work too.
 
-To run it full-screen like an appliance, open it in kiosk mode:
+### Raspberry Pi
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://127.0.0.1:9090/
+git clone -b claude/desktop-home-dashboard-3txbxr https://github.com/yakgabee/DeskBuddy.git ~/DeskBuddy
+cd ~/DeskBuddy
+./kiosk.sh
 ```
 
-On Windows: `start chrome --kiosk http://127.0.0.1:9090/`. Use `Alt+F4` to exit.
+`kiosk.sh` starts DeskBuddy and opens it full-screen in Chromium. Press `Alt+F4` to exit.
+
+**Start it automatically when the Pi boots** (Raspberry Pi OS Bookworm):
+
+```bash
+mkdir -p ~/.config/labwc && echo "$HOME/DeskBuddy/kiosk.sh &" >> ~/.config/labwc/autostart
+```
+
+**Keep the screen on:** run `sudo raspi-config`, choose **Display Options → Screen
+Blanking → No**, then reboot.
+
+### Windows / other computers
+
+Run `start.bat` (or `./start.sh`), then for full-screen: `start chrome --kiosk http://127.0.0.1:9090/`.
 
 ## Settings
 
