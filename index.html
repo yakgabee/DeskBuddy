@@ -33,28 +33,37 @@
     </a>
 
     <!-- Spotify now playing -->
-    <section class="now-playing card" id="now-playing">
+    <section class="now-playing card is-empty" id="now-playing">
       <div class="cover-wrap">
         <button class="cover" id="cover" aria-label="Show lyrics">
+          <img id="cover-img" alt="" hidden>
+          <span class="cover-icon" data-icon="lyrics" data-size="56"></span>
           <span class="cover-album" id="cover-album"></span>
           <span class="cover-artist" id="cover-artist"></span>
           <span class="cover-hint"><span data-icon="lyrics" data-size="14"></span>Lyrics</span>
         </button>
       </div>
       <div class="np-info">
-        <div class="np-label"><span class="dot"></span>Now playing on Spotify</div>
-        <div class="np-title" id="np-title">—</div>
-        <div class="np-artist" id="np-artist">—</div>
-        <div class="np-album" id="np-album">—</div>
-        <div class="progress">
-          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-          <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
+        <div class="np-label">
+          <span class="dot"></span><span id="np-source">Spotify</span>
+          <button class="link-btn" id="btn-disconnect" hidden>Disconnect</button>
         </div>
-        <div class="controls">
-          <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
-          <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
-          <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
-          <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
+        <div class="np-title" id="np-title">Spotify</div>
+        <div class="np-artist" id="np-artist"></div>
+        <div class="np-album" id="np-album"></div>
+        <p class="np-message" id="np-message" hidden></p>
+        <button class="connect-btn" id="btn-connect" hidden>Connect Spotify</button>
+        <div class="player-ui">
+          <div class="progress">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
+          </div>
+          <div class="controls">
+            <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
+            <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
+            <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
+            <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
+          </div>
         </div>
       </div>
     </section>
@@ -70,13 +79,16 @@
     <div class="lyrics-body" id="lyrics-body"></div>
   </div>
 
-  <div class="draft-badge">Draft · demo data</div>
+  <div class="toast" id="toast" role="status"></div>
 
+  <script src="assets/config.js"></script>
   <script src="assets/icons.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
   <script src="assets/servers.js"></script>
   <script src="assets/spotify-mock.js"></script>
+  <script src="assets/spotify.js"></script>
+  <script src="assets/lyrics.js"></script>
   <script src="assets/home.js"></script>
 </body>
 </html>

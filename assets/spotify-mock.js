@@ -1,8 +1,5 @@
-// DRAFT: mock "now playing" data so the layout can be reviewed without a
-// Spotify login. The real version will call the Spotify Web API
-// (GET /v1/me/player/currently-playing) and fetch synced lyrics from a
-// lyrics provider (Spotify's API does not expose lyrics).
-// Placeholder songs + lyrics below are made up for the demo.
+// Demo player used when the page is opened with ?demo (no Spotify login).
+// Songs and lyrics below are made up.
 window.MockPlayer = {
   tracks: [
     {

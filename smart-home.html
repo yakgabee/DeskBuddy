@@ -44,15 +44,19 @@
       <div class="srv-summary">
         <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
         <div class="srv-stat card"><div class="stat-value" id="srv-down">–</div><div class="stat-label">Stopped</div></div>
-        <div class="srv-stat card"><div class="stat-value" id="srv-cpu">–</div><div class="stat-label">Avg CPU</div></div>
-        <div class="srv-stat card"><div class="stat-value" id="srv-checked">–</div><div class="stat-label">Last checked</div></div>
+        <div class="srv-stat card"><div class="stat-value" id="srv-ms">–</div><div class="stat-label">Avg response</div></div>
+        <div class="srv-stat card srv-checked">
+          <div><div class="stat-value" id="srv-checked">–</div><div class="stat-label">Last checked</div></div>
+          <button class="open-btn" id="srv-refresh">Check now</button>
+        </div>
       </div>
       <section class="servers" id="servers"></section>
     </div>
   </main>
 
-  <div class="draft-badge">Draft · demo data</div>
+  <div class="draft-badge" id="draft-badge">Devices are demo data</div>
 
+  <script src="assets/config.js"></script>
   <script src="assets/icons.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
