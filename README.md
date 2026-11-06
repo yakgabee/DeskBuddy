@@ -87,6 +87,13 @@ This uses uTorrent's built-in Web UI (uTorrent Classic, the desktop app):
 runs on another computer, use that computer's address instead of `127.0.0.1`
 (its Tailscale IP works too).
 
+**If uTorrent answers "invalid request":**
+- If **Restrict access to the following IPs** is ticked in the Web UI settings, add
+  the IP of the computer running DeskBuddy (on a Pi: `hostname -I`). Separate
+  entries with commas, e.g. `127.0.0.1,10.0.10.50`.
+- Otherwise, DeskBuddy also works with uTorrent's token check turned off:
+  **Preferences → Advanced**, set `webui.token_auth` to `false`.
+
 ## Spotify notes
 
 - In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), the app's

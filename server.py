@@ -98,6 +98,10 @@ def local_settings():
 
 
 # ---------- uTorrent (classic) Web UI ----------
+class WebUIRefused(Exception):
+    """uTorrent answered but refused the request (token check problem)."""
+
+
 class UTorrent:
     """Talks to uTorrent's Web UI API: get a token, then list torrents."""
 
@@ -124,14 +128,26 @@ class UTorrent:
             return r.read().decode("utf-8", "replace")
 
     def _list(self, base):
-        if not self.token:
-            html = self._get(f"{base}/gui/token.html")
-            m = re.search(r">([^<]+)</div>", html)
-            if not m:
-                raise ValueError("no token")
-            self.token = m.group(1)
-        q = urllib.parse.urlencode({"token": self.token, "list": 1})
-        return json.loads(self._get(f"{base}/gui/?{q}"))
+        # Most setups need a token from /gui/token.html first. If uTorrent's
+        # token check is turned off (webui.token_auth = false), that page answers
+        # "invalid request" and the list works without one.
+        if self.token is None:
+            try:
+                m = re.search(r">([^<]+)</div>", self._get(f"{base}/gui/token.html"))
+                self.token = m.group(1) if m else ""
+            except urllib.error.HTTPError as e:
+                if e.code == 401:
+                    raise
+                self.token = ""
+        params = {"list": 1}
+        if self.token:
+            params["token"] = self.token
+        try:
+            return json.loads(self._get(f"{base}/gui/?{urllib.parse.urlencode(params)}"))
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and not self.token:
+                raise WebUIRefused() from e
+            raise
 
     @classmethod
     def state(cls, t):
@@ -173,6 +189,9 @@ class UTorrent:
                 try:
                     data = self._list(base)
                     break
+                except WebUIRefused:
+                    self.token = None
+                    return 503, {"connected": False, "error": "refused"}
                 except urllib.error.HTTPError as e:
                     self.token = None
                     if e.code == 401:

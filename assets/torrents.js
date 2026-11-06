@@ -33,5 +33,6 @@ window.DeskTorrents = {
     not_set_up: 'Not connected yet. Turn on uTorrent\'s Web UI and add it to <code>local-settings.json</code> (see the README).',
     auth: 'uTorrent rejected the username or password in <code>local-settings.json</code>.',
     unreachable: 'Can\'t reach uTorrent. Is it open, with the Web UI turned on?',
+    refused: 'uTorrent refused the request. In uTorrent\'s Web UI settings, make sure this computer\'s IP is allowed under “Restrict access to the following IPs” (see the README).',
   },
 };
