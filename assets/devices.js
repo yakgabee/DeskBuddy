@@ -16,22 +16,6 @@ window.DeskDevices = {
     }
   },
   checkAll() { return Promise.all(this.list().map(d => this.check(d))); },
-  // Device ids that have a MAC address set up for Wake-on-LAN.
-  async wakeable() {
-    try {
-      const r = await fetch('/api/wake', { cache: 'no-store' });
-      return r.ok ? (await r.json()).ids || [] : [];
-    } catch (e) { return []; }
-  },
-  async wake(d) {
-    try {
-      const r = await fetch('/api/wake', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: d.id, host: d.host || '' }),
-      });
-      return r.ok;
-    } catch (e) { return false; }
-  },
   summary(list) {
     const set = list.filter(d => d.status === 'online' || d.status === 'offline');
     return { online: set.filter(d => d.status === 'online').length, total: set.length };

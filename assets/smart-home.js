@@ -31,22 +31,14 @@
     unset: 'Not set up', invalid: 'Check the address', no_server: 'Start with start.sh / kiosk.sh',
   };
   let devices = DeskDevices.list().map(d => ({ ...d, status: d.host ? 'checking' : 'unset' }));
-  let wakeIds = [];
-  const waking = {};   // id -> time the wake signal was sent
-  const WAKE_WINDOW = 3 * 60 * 1000;
 
   function renderDevices() {
     $('devices').innerHTML = devices.length ? devices.map(d => {
-      const isWaking = d.status !== 'online' && waking[d.id] && Date.now() - waking[d.id] < WAKE_WINDOW;
-      const statusClass = d.status === 'online' ? 'up' : isWaking ? 'checking' : d.status === 'offline' ? 'down' : 'checking';
-      const canWake = wakeIds.includes(d.id) && d.status !== 'online';
+      const statusClass = d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';
       return `<article class="dev card ${d.status}">
-        <div class="dev-top">
-          <div class="dev-icon">${icon(d.icon || 'server', 28)}</div>
-          ${canWake ? `<button class="open-btn wake-btn" data-wake="${esc(d.id)}" ${isWaking ? 'disabled' : ''}>${icon('power', 14)}${isWaking ? 'Waking…' : 'Wake'}</button>` : ''}
-        </div>
+        <div class="dev-icon">${icon(d.icon || 'server', 28)}</div>
         <div class="dev-name">${esc(d.name)}</div>
-        <span class="status ${statusClass}">${isWaking ? 'Waking up…' : DEV_STATUS[d.status] || d.status}</span>
+        <span class="status ${statusClass}">${DEV_STATUS[d.status] || d.status}</span>
         <div class="dev-sub">${d.host
           ? `<code>${esc(d.host)}</code>${d.status === 'online' && d.ms != null ? ` · ${d.ms} ms` : ''}`
           : 'Add its IP address in <code>assets/config.js</code>'}</div>
@@ -64,32 +56,9 @@
 
   async function checkDevices() {
     devices = await DeskDevices.checkAll();
-    devices.forEach(d => { if (d.status === 'online') delete waking[d.id]; });
     renderDevices();
   }
-
-  $('devices').addEventListener('click', async e => {
-    const b = e.target.closest('[data-wake]');
-    if (!b) return;
-    const d = devices.find(x => x.id === b.dataset.wake);
-    if (!d) return;
-    waking[d.id] = Date.now();
-    renderDevices();
-    if (!(await DeskDevices.wake(d))) {
-      delete waking[d.id];
-      $('dev-meta').textContent = `Couldn't send the wake signal to ${d.name}`;
-      return renderDevices();
-    }
-    // Check every few seconds while it boots.
-    const started = Date.now();
-    const timer = setInterval(async () => {
-      await checkDevices();
-      if (!waking[d.id] || Date.now() - started > WAKE_WINDOW) { clearInterval(timer); renderDevices(); }
-    }, 4000);
-  });
-
   renderDevices();
-  DeskDevices.wakeable().then(ids => { wakeIds = ids; renderDevices(); });
   checkDevices();
   setInterval(checkDevices, 15000);
 
