@@ -20,13 +20,15 @@
 
   function renderTrack() {
     const t = player.current;
-    document.documentElement.style.setProperty('--cover-gradient', t.gradient);
-    $('cover-art').textContent = t.emoji;
+    document.documentElement.style.setProperty('--track-bg', t.bg);
+    document.documentElement.style.setProperty('--track-fg', t.fg);
+    $('cover-album').textContent = t.album;
+    $('cover-artist').textContent = t.artist;
     $('np-title').textContent = t.title;
     $('np-artist').textContent = t.artist;
     $('np-album').textContent = t.album;
     $('t-dur').textContent = fmt(t.duration);
-    $('lyrics-cover').textContent = t.emoji;
+    $('lyrics-cover').textContent = t.album.split(' ').map(w => w[0]).join('').slice(0, 2);
     $('lyrics-title').textContent = t.title;
     $('lyrics-artist').textContent = t.artist;
     $('lyrics-body').innerHTML = t.lyrics
@@ -40,7 +42,7 @@
     const t = player.current;
     $('progress-fill').style.width = `${(player.position / t.duration) * 100}%`;
     $('t-cur').textContent = fmt(player.position);
-    $('btn-play').textContent = player.playing ? '⏸' : '▶';
+    $('btn-play').innerHTML = icon(player.playing ? 'pause' : 'play', 22);
     $('now-playing').classList.toggle('paused', !player.playing);
 
     // Synced lyrics highlight
@@ -85,6 +87,7 @@
   };
   const closeLyrics = () => $('lyrics').classList.remove('open');
   $('cover').onclick = openLyrics;
+  $('btn-lyrics').onclick = openLyrics;
   $('lyrics-close').onclick = closeLyrics;
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLyrics(); });
 })();

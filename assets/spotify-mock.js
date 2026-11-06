@@ -7,7 +7,7 @@ window.MockPlayer = {
   tracks: [
     {
       title: 'Neon Afternoon', artist: 'The Paper Satellites', album: 'Signals From Home',
-      emoji: '🌆', gradient: 'linear-gradient(135deg, #ff6a88 0%, #7b4dff 100%)',
+      bg: '#e4572e', fg: '#fff4e6',
       duration: 200,
       lyrics: [
         [0, '♪'],
@@ -35,7 +35,7 @@ window.MockPlayer = {
     },
     {
       title: 'Low Tide Radio', artist: 'Marlow Vale', album: 'Coastline Static',
-      emoji: '🌊', gradient: 'linear-gradient(135deg, #00c6ff 0%, #0b3d91 100%)',
+      bg: '#1d3557', fg: '#a8dadc',
       duration: 185,
       lyrics: [
         [0, '♪'],
@@ -53,7 +53,7 @@ window.MockPlayer = {
     },
     {
       title: 'Paper Planets', artist: 'Juniper & The Hum', album: 'Small Universe',
-      emoji: '🪐', gradient: 'linear-gradient(135deg, #f7971e 0%, #2a9d8f 100%)',
+      bg: '#e9c46a', fg: '#264653',
       duration: 214,
       lyrics: [
         [0, '♪'],

@@ -6,8 +6,8 @@
   let room = 'All';
 
   const ICON_ON = {
-    light: '#ffb347', plug: '#1ed760', thermostat: '#ff7a59',
-    lock: '#7c9cff', camera: '#e5484d', blinds: '#56c7d6',
+    light: '#f59e0b', plug: '#3b82f6', thermostat: '#f97316',
+    lock: '#22c55e', camera: '#ef4444', blinds: '#0ea5e9',
   };
 
   function stateText(d) {
@@ -29,7 +29,7 @@
         return `<div class="thermo"><div class="thermo-temp">${d.target}°</div>
           <div class="thermo-btns"><button class="round-btn" data-act="down">−</button><button class="round-btn" data-act="up">+</button></div></div>`;
       case 'camera':
-        return `<div class="cam-preview">${d.on ? '<span class="live">LIVE</span>Camera feed' : 'Camera off'}</div>`;
+        return `<div class="cam-preview">${d.on ? '<span class="live">Live</span>Camera feed' : 'Camera off'}</div>`;
       case 'blinds':
         return `<input type="range" min="0" max="100" value="${d.position}" data-act="position" aria-label="Blinds position">`;
       default:
@@ -48,7 +48,7 @@
       const isOn = d.type === 'blinds' ? d.position > 0 : d.on;
       return `<article class="device card ${isOn ? 'on' : ''}" data-id="${d.id}" style="--icon-on:${ICON_ON[d.type]}">
         <div class="device-top">
-          <div class="device-icon">${d.icon}</div>
+          <div class="device-icon">${icon(d.type === 'lock' && !d.on ? 'unlock' : d.icon)}</div>
           ${hasToggle ? `<button class="toggle ${d.on ? 'on' : ''}" data-act="toggle" aria-label="Toggle ${d.name}"></button>` : ''}
         </div>
         <div>
@@ -142,14 +142,14 @@
     const order = { up: 0, warn: 1, down: 2 };
     const list = [...servers].sort((a, b) => order[a.status] - order[b.status]);
     $('servers').innerHTML = list.map(s => `
-      <article class="server card ${s.status}" style="--srv-color:${s.color}">
+      <article class="server card ${s.status}">
         <div class="server-top">
-          <div class="server-icon">${s.icon}</div>
+          <div class="server-icon">${icon(s.icon)}</div>
           <div class="grow">
             <div class="server-name">${s.name}</div>
             <div class="server-desc">${s.desc}</div>
           </div>
-          <span class="status-pill ${s.status}">${STATUS[s.status]}</span>
+          <span class="status ${s.status}">${STATUS[s.status]}</span>
         </div>
         <div class="meters">${meter('CPU', s.cpu)}${meter('Memory', s.ram)}</div>
         <div class="server-foot">
@@ -157,7 +157,7 @@
             <code>${s.host}:${s.port}</code>
             <span>${s.status === 'down' ? 'Offline' : 'Up ' + uptime(s.uptimeH)}${s.ping ? ` · ${s.ping} ms` : ''}</span>
           </div>
-          ${s.status !== 'down' ? `<a class="open-btn" href="http://${s.host}:${s.port}" target="_blank" rel="noopener">Open ↗</a>` : ''}
+          ${s.status !== 'down' ? `<a class="open-btn" href="http://${s.host}:${s.port}" target="_blank" rel="noopener">Open ${icon('external', 14)}</a>` : ''}
         </div>
       </article>`).join('');
 

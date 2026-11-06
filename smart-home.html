@@ -4,12 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeskBuddy · Smart Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
   <main class="sh-page">
     <header class="sh-header">
-      <a class="back-btn card" href="index.html" aria-label="Back to dashboard">←</a>
+      <a class="back-btn" href="index.html" aria-label="Back to dashboard" data-icon="arrowLeft"></a>
       <div>
         <h1>Smart Home</h1>
         <div class="sub" id="sh-summary"></div>
@@ -18,18 +21,19 @@
       <div class="sh-clock" id="sh-clock"></div>
     </header>
 
-    <nav class="tabs card" id="tabs">
-      <button class="tab active" data-tab="devices">🏠 Devices</button>
-      <button class="tab" data-tab="servers">🖥️ Servers <span class="count" id="srv-count"></span></button>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="devices"><span data-icon="home" data-size="16"></span>Devices</button>
+      <button class="tab" data-tab="servers"><span data-icon="server" data-size="16"></span>Servers <span class="count" id="srv-count"></span></button>
     </nav>
 
     <div class="panel" id="panel-devices">
+    <div class="section-title">Scenes</div>
     <div class="scenes" id="scenes">
-      <button class="scene card" data-scene="morning">☀️ Good Morning</button>
-      <button class="scene card" data-scene="focus">🎧 Focus</button>
-      <button class="scene card" data-scene="movie">🎬 Movie Night</button>
-      <button class="scene card" data-scene="away">🚪 Away</button>
-      <button class="scene card" data-scene="night">🌙 Good Night</button>
+      <button class="scene" data-scene="morning"><span data-icon="sun" data-size="16"></span>Good Morning</button>
+      <button class="scene" data-scene="focus"><span data-icon="headphones" data-size="16"></span>Focus</button>
+      <button class="scene" data-scene="movie"><span data-icon="film" data-size="16"></span>Movie Night</button>
+      <button class="scene" data-scene="away"><span data-icon="leave" data-size="16"></span>Away</button>
+      <button class="scene" data-scene="night"><span data-icon="moon" data-size="16"></span>Good Night</button>
     </div>
 
     <div class="rooms" id="rooms"></div>
@@ -49,6 +53,7 @@
 
   <div class="draft-badge">Draft · demo data</div>
 
+  <script src="assets/icons.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
   <script src="assets/servers.js"></script>

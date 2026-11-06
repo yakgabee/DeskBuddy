@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeskBuddy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -18,8 +21,8 @@
     <!-- Smart Home widget -->
     <a class="smart-home-tile card" href="smart-home.html" aria-label="Open Smart Home">
       <div class="tile-head">
-        <div class="tile-title"><span class="tile-icon">🏠</span>Smart Home</div>
-        <span class="tile-arrow">→</span>
+        <div class="tile-title"><span class="tile-icon" data-icon="home"></span>Smart Home</div>
+        <span class="tile-arrow" data-icon="chevronRight"></span>
       </div>
       <div class="tile-stats">
         <div><div class="stat-value" id="stat-on">–</div><div class="stat-label">Devices on</div></div>
@@ -31,15 +34,15 @@
 
     <!-- Spotify now playing -->
     <section class="now-playing card" id="now-playing">
-      <div class="np-bg"></div>
       <div class="cover-wrap">
         <button class="cover" id="cover" aria-label="Show lyrics">
-          <span id="cover-art"></span>
-          <span class="cover-hint">Tap for lyrics</span>
+          <span class="cover-album" id="cover-album"></span>
+          <span class="cover-artist" id="cover-artist"></span>
+          <span class="cover-hint"><span data-icon="lyrics" data-size="14"></span>Lyrics</span>
         </button>
       </div>
       <div class="np-info">
-        <div class="np-label"><span class="eq"><span></span><span></span><span></span></span>Now playing on Spotify</div>
+        <div class="np-label"><span class="dot"></span>Now playing on Spotify</div>
         <div class="np-title" id="np-title">—</div>
         <div class="np-artist" id="np-artist">—</div>
         <div class="np-album" id="np-album">—</div>
@@ -48,9 +51,10 @@
           <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
         </div>
         <div class="controls">
-          <button class="ctrl" id="btn-prev" aria-label="Previous">⏮</button>
-          <button class="ctrl play" id="btn-play" aria-label="Play/Pause">⏸</button>
-          <button class="ctrl" id="btn-next" aria-label="Next">⏭</button>
+          <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
+          <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
+          <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
+          <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
         </div>
       </div>
     </section>
@@ -61,13 +65,14 @@
     <div class="lyrics-head">
       <div class="mini-cover" id="lyrics-cover"></div>
       <div class="meta"><b id="lyrics-title"></b><span class="muted" id="lyrics-artist"></span></div>
-      <button class="close-btn" id="lyrics-close" aria-label="Close lyrics">✕</button>
+      <button class="close-btn" id="lyrics-close" aria-label="Close lyrics" data-icon="x"></button>
     </div>
     <div class="lyrics-body" id="lyrics-body"></div>
   </div>
 
   <div class="draft-badge">Draft · demo data</div>
 
+  <script src="assets/icons.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
   <script src="assets/servers.js"></script>
