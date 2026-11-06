@@ -90,6 +90,23 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .stat-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; font-weight: 500; }
 
+/* Downloads (only while downloading) */
+.dashboard.has-downloads { grid-template-rows: auto auto 1fr; }
+.downloads { grid-column: 1 / span 2; padding: 18px 24px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s; }
+.downloads:hover { border-color: var(--surface-3); }
+.downloads[hidden] { display: none; }
+.dl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.dl-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.dl-title .i { color: var(--green); }
+.dl-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 28px; }
+.dl-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dl-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 500; }
+.dl-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-pct { font-variant-numeric: tabular-nums; }
+.dl-item .meter > div { background: var(--green); }
+.dl-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dl-more { font-size: 13px; color: var(--muted); align-self: end; }
+
 /* Now playing */
 .now-playing {
   grid-column: 1 / span 2;
@@ -218,6 +235,23 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .section-head-row .section-head { margin: 0; }
 .section-head-row .muted { font-size: 13px; }
 
+/* ---------- Torrents list ---------- */
+.tor-row { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(160px, 1fr) 150px 110px 140px; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--border); font-size: 13px; }
+.tor-row:first-child { border-top: none; }
+.tor-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tor-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tor-prog { display: flex; flex-direction: column; gap: 6px; }
+.tor-prog .meter-label { margin: 0; }
+.tor-row .meter > div { background: var(--green); }
+.tor-row.seeding .meter > div, .tor-row.finished .meter > div { background: var(--text); }
+.tor-row.paused .meter > div, .tor-row.stopped .meter > div, .tor-row.queued .meter > div { background: var(--subtle); }
+.tor-speed, .tor-eta { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.status.downloading::before { background: var(--green); }
+.status.stalled::before, .status.checking::before, .status.queued::before { background: var(--amber); }
+.status.seeding::before { background: var(--accent); }
+.status.finished::before { background: var(--text); }
+.status.error::before { background: var(--red); }
+
 /* ---------- Tailscale ---------- */
 .ts { padding: 4px 0; }
 .ts-empty { padding: 20px; color: var(--muted); font-size: 14px; }
@@ -279,7 +313,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 
 @media (max-width: 900px) {
   .dashboard { grid-template-columns: 1fr; height: auto; padding: 16px; gap: 12px; }
-  .clock, .smart-home-tile, .now-playing { grid-column: 1; }
+  .clock, .smart-home-tile, .now-playing, .downloads { grid-column: 1; }
   .tile-stats { grid-template-columns: repeat(2, auto); }
   .now-playing { grid-template-columns: 1fr; gap: 24px; }
   .cover-wrap { height: auto; width: 100%; max-width: 320px; min-height: 0; }
@@ -289,5 +323,9 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .ts-row .ip { grid-column: 1; margin-left: 44px; }
   .ts-row .status { grid-column: 2; grid-row: 1; }
   .ts-conn, .ts-traffic { display: none; }
+  .tor-row { grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .tor-row .tor-prog { grid-column: 1 / -1; }
+  .tor-row .status { grid-column: 2; grid-row: 1; }
+  .tor-speed, .tor-eta { display: none; }
   .lyrics-head, .lyrics-body { padding-left: 16px; padding-right: 16px; }
 }

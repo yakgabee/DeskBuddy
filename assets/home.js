@@ -16,6 +16,29 @@
   refreshStatus();
   setInterval(refreshStatus, 60000);
 
+  // ---------- Downloads (uTorrent) ----------
+  const escHtml = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const refreshDownloads = async () => {
+    const d = await DeskTorrents.status();
+    const active = DeskTorrents.active(d);
+    $('downloads').hidden = !active.length;
+    document.querySelector('.dashboard').classList.toggle('has-downloads', active.length > 0);
+    if (!active.length) return;
+    $('dl-title').textContent = active.length === 1 ? 'Downloading' : `Downloading ${active.length} files`;
+    $('dl-speed').textContent = `↓ ${DeskTorrents.speed(d.downSpeed)}`;
+    const shown = active.slice(0, 2);
+    $('dl-list').innerHTML = shown.map(t => `
+      <div class="dl-item">
+        <div class="dl-row"><span class="dl-name">${escHtml(t.name)}</span><span class="dl-pct">${Math.floor(t.progress)}%</span></div>
+        <div class="meter"><div style="width:${t.progress}%"></div></div>
+        <div class="dl-meta">${t.state === 'stalled' ? 'Waiting for peers' : [DeskTorrents.speed(t.downSpeed), DeskTorrents.eta(t.eta)].filter(Boolean).join(' · ')}
+          · ${DeskTorrents.bytes(t.size - t.remaining)} of ${DeskTorrents.bytes(t.size)}</div>
+      </div>`).join('')
+      + (active.length > shown.length ? `<div class="dl-more">+${active.length - shown.length} more</div>` : '');
+  };
+  refreshDownloads();
+  setInterval(refreshDownloads, 3000);
+
   // ---------- Helpers ----------
   const fmt = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

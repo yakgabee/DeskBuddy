@@ -1,7 +1,7 @@
 # DeskBuddy
 
-A desktop home dashboard: clock, Spotify now-playing with synced lyrics, and a
-Smart Home page with live server and Tailscale status.
+A desktop home dashboard: clock, Spotify now-playing with synced lyrics, uTorrent
+downloads, and a Smart Home page with live server, download and Tailscale status.
 
 ## Run it
 
@@ -12,9 +12,9 @@ must be opened at exactly that address.
 - **Windows:** double-click `start.bat`
 
 Both run `server.py` (Python 3 needed, nothing to install) and open the browser.
-`server.py` serves the dashboard and reads your Tailscale devices from the
-Tailscale app on this computer (`tailscale status --json`). It only listens on
-127.0.0.1.
+`server.py` serves the dashboard, reads your Tailscale devices from the Tailscale
+app on this computer (`tailscale status --json`), and reads your uTorrent
+downloads. It only listens on 127.0.0.1.
 
 Want to see it without logging in? Open `http://127.0.0.1:9090/?demo`.
 
@@ -28,6 +28,36 @@ Everything lives in [`assets/config.js`](assets/config.js):
 - **Servers:** the list shown on the Smart Home page. Jellyfin servers also show
   their name and version.
 
+## Show uTorrent downloads
+
+While something is downloading, a **Downloading** card appears on the home screen
+with progress, speed and time left. It disappears when nothing is downloading.
+The Smart Home page lists every torrent.
+
+This uses uTorrent's built-in Web UI (uTorrent Classic, the desktop app):
+
+1. In uTorrent, open **Options → Preferences → Advanced → Web UI**.
+2. Tick **Enable Web UI** and choose a username and password.
+3. Tick **Alternative listening port** and set it to `8080`. Click **OK**.
+4. In the DeskBuddy folder, copy `local-settings.example.json` to
+   `local-settings.json` and fill in the same username and password:
+
+   ```json
+   {
+     "utorrent": {
+       "url": "http://127.0.0.1:8080",
+       "username": "admin",
+       "password": "your-web-ui-password"
+     }
+   }
+   ```
+
+5. Restart DeskBuddy.
+
+`local-settings.json` is git-ignored and never served to the browser. If uTorrent
+runs on another computer, use that computer's address instead of `127.0.0.1`
+(its Tailscale IP works too).
+
 ## Spotify notes
 
 - In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), the app's
@@ -39,4 +69,4 @@ Everything lives in [`assets/config.js`](assets/config.js):
 
 ## Status
 
-- Clock, Spotify, lyrics, server checks, Tailscale devices: **live**.
+- Clock, Spotify, lyrics, server checks, uTorrent downloads, Tailscale devices: **live**.

@@ -3,9 +3,9 @@
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   DeskClock.start({ short: $('sh-clock') });
 
-  const summary = { servers: '', tailscale: '' };
+  const summary = { servers: '', downloads: '', tailscale: '' };
   const renderSummary = () => {
-    $('sh-summary').textContent = [summary.servers, summary.tailscale].filter(Boolean).join(' · ');
+    $('sh-summary').textContent = [summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
   };
 
   // ---------- Servers ----------
@@ -127,6 +127,43 @@
       setTimeout(() => { b.classList.remove('copied'); b.querySelector('svg').outerHTML = icon('copy', 14); }, 1200);
     } catch (err) { /* clipboard blocked */ }
   });
+
+  // ---------- Downloads (uTorrent) ----------
+  const T = DeskTorrents;
+  async function checkTorrents() {
+    const d = await T.status();
+    if (!d.connected) {
+      $('torrents').innerHTML = `<p class="ts-empty">${T.ERRORS[d.error] || T.ERRORS.unreachable}</p>`;
+      $('tor-meta').textContent = '';
+      summary.downloads = '';
+      return renderSummary();
+    }
+    const active = T.active(d);
+    $('tor-meta').textContent = [
+      active.length ? `${active.length} downloading` : 'Nothing downloading',
+      `↓ ${T.speed(d.downSpeed)}`, `↑ ${T.speed(d.upSpeed)}`,
+    ].join(' · ');
+    $('torrents').innerHTML = d.torrents.length ? d.torrents.map(t => {
+      const moving = t.state === 'downloading';
+      return `<div class="tor-row ${t.state}">
+        <div style="min-width:0">
+          <div class="tor-name" title="${esc(t.name)}">${esc(t.name)}</div>
+          <div class="tor-sub">${T.bytes(t.size)}${t.label ? ` · ${esc(t.label)}` : ''}</div>
+        </div>
+        <div class="tor-prog">
+          <div class="meter-label"><span>${T.bytes(t.size - t.remaining)}</span><span>${Math.floor(t.progress)}%</span></div>
+          <div class="meter"><div style="width:${t.progress}%"></div></div>
+        </div>
+        <span class="status ${t.state}">${esc(t.stateText)}</span>
+        <span class="tor-speed">${moving ? `↓ ${T.speed(t.downSpeed)}` : t.upSpeed ? `↑ ${T.speed(t.upSpeed)}` : ''}</span>
+        <span class="tor-eta">${moving ? T.eta(t.eta) : ''}</span>
+      </div>`;
+    }).join('') : '<p class="ts-empty">No torrents in uTorrent.</p>';
+    summary.downloads = active.length ? `${active.length} downloading` : '';
+    renderSummary();
+  }
+  checkTorrents();
+  setInterval(checkTorrents, 3000);
 
   // ---------- Refresh ----------
   async function checkAll() {

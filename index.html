@@ -30,6 +30,15 @@
       </div>
     </a>
 
+    <!-- uTorrent: only shown while something is downloading -->
+    <a class="downloads card" id="downloads" href="smart-home.html#downloads" hidden>
+      <div class="dl-head">
+        <span class="dl-title"><span data-icon="download" data-size="18"></span><span id="dl-title">Downloading</span></span>
+        <span class="muted" id="dl-speed"></span>
+      </div>
+      <div class="dl-list" id="dl-list"></div>
+    </a>
+
     <!-- Spotify now playing -->
     <section class="now-playing card is-empty" id="now-playing">
       <div class="cover-wrap">
@@ -84,6 +93,7 @@
   <script src="assets/clock.js"></script>
   <script src="assets/servers.js"></script>
   <script src="assets/tailscale.js"></script>
+  <script src="assets/torrents.js"></script>
   <script src="assets/spotify-mock.js"></script>
   <script src="assets/spotify.js"></script>
   <script src="assets/lyrics.js"></script>
