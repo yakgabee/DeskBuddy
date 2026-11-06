@@ -6,6 +6,8 @@ back to) and adds:
 
   GET /api/tailscale  ->  your tailnet's devices, from `tailscale status --json`
   GET /api/torrents   ->  your uTorrent downloads, via uTorrent's Web UI
+  GET /api/weather    ->  current weather + today's high/low (OpenWeatherMap)
+  GET /api/ping?host= ->  is a device on your home network online?
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -13,14 +15,18 @@ this file. It is git-ignored and never served to the browser.
 It only listens on 127.0.0.1, so nothing else on your network can reach it.
 """
 import base64
+import concurrent.futures
 import http.cookiejar
+import ipaddress
 import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -215,6 +221,125 @@ class UTorrent:
 utorrent = UTorrent()
 
 
+# ---------- Weather (OpenWeatherMap) ----------
+OWM_BASE = os.environ.get("DESKBUDDY_OWM_URL", "https://api.openweathermap.org")
+GEO_URL = os.environ.get("DESKBUDDY_GEO_URL", "http://ip-api.com/json/?fields=status,city,lat,lon,countryCode")
+WEATHER_TTL = 600  # seconds; keeps API use tiny
+
+
+def fetch_json(url, timeout=6):
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+class Weather:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.cache = None       # (time, key, body)
+        self.location = None    # auto-detected from this network's public IP
+
+    def _where(self, cfg):
+        if cfg.get("lat") is not None and cfg.get("lon") is not None:
+            return {"lat": cfg["lat"], "lon": cfg["lon"]}, cfg.get("units")
+        if cfg.get("city"):
+            return {"q": cfg["city"]}, cfg.get("units")
+        if not self.location:
+            geo = fetch_json(GEO_URL)
+            if geo.get("status") != "success":
+                raise ValueError("location lookup failed")
+            self.location = geo
+        units = cfg.get("units") or ("imperial" if self.location.get("countryCode") in ("US", "LR", "MM") else "metric")
+        return {"lat": self.location["lat"], "lon": self.location["lon"]}, units
+
+    def status(self):
+        cfg = local_settings().get("weather") or {}
+        if not cfg.get("apiKey"):
+            return 503, {"error": "not_set_up"}
+        with self.lock:
+            key = json.dumps(cfg, sort_keys=True)
+            if self.cache and self.cache[1] == key and time.time() - self.cache[0] < WEATHER_TTL:
+                return 200, self.cache[2]
+            try:
+                where, units = self._where(cfg)
+                q = urllib.parse.urlencode({**where, "appid": cfg["apiKey"], "units": units or "metric"})
+                now = fetch_json(f"{OWM_BASE}/data/2.5/weather?{q}")
+                fc = fetch_json(f"{OWM_BASE}/data/2.5/forecast?{q}&cnt=8")
+            except urllib.error.HTTPError as e:
+                return 503, {"error": "bad_key" if e.code == 401 else "not_found" if e.code == 404 else "unreachable"}
+            except (urllib.error.URLError, OSError, ValueError, KeyError):
+                return 503, {"error": "unreachable"}
+            # Today's high/low: current reading + forecast slots for the rest of today.
+            tz = now.get("timezone", 0)
+            today = time.gmtime(now["dt"] + tz)[:3]
+            temps = [now["main"]["temp"]] + [x["main"]["temp"] for x in fc.get("list", [])
+                                             if time.gmtime(x["dt"] + tz)[:3] == today]
+            w = (now.get("weather") or [{}])[0]
+            body = {
+                "temp": round(now["main"]["temp"]),
+                "feelsLike": round(now["main"].get("feels_like", now["main"]["temp"])),
+                "high": round(max(temps)), "low": round(min(temps)),
+                "condition": w.get("main", ""), "description": w.get("description", ""),
+                "icon": w.get("icon", ""), "city": now.get("name", ""),
+                "units": units or "metric",
+            }
+            self.cache = (time.time(), key, body)
+            return 200, body
+
+
+weather = Weather()
+
+
+# ---------- Device online check (home network only) ----------
+PROBE_PORTS = tuple(int(p) for p in os.environ.get(
+    "DESKBUDDY_PROBE_PORTS", "445,139,135,3389,22,80,443,7000,62078,8080").split(","))  # common on PCs, Macs, Apple TVs
+
+
+def home_network_host(host):
+    """Only devices on your own network may be checked."""
+    if host.endswith((".local", ".lan", ".home")):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback or (ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"))
+
+
+def ping(host):
+    windows = sys.platform.startswith("win")
+    cmd = ["ping", "-n", "1", "-w", "1000", host] if windows else ["ping", "-c", "1", "-W", "1", host]
+    try:
+        return subprocess.run(cmd, capture_output=True, timeout=3).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def tcp_open(host, port):
+    try:
+        with socket.create_connection((host, port), timeout=0.8):
+            return True
+    except OSError:
+        return False
+
+
+def device_status(host, extra_ports=()):
+    if not host or not home_network_host(host):
+        return 400, {"error": "not_allowed"}
+    ports = list(dict.fromkeys([*extra_ports, *PROBE_PORTS]))
+    t0 = time.time()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(ports) + 1) as pool:
+        jobs = [pool.submit(ping, host)] + [pool.submit(tcp_open, host, p) for p in ports]
+        online = False
+        for job in concurrent.futures.as_completed(jobs):
+            if job.result():
+                online = True
+                break
+        ms = round((time.time() - t0) * 1000)
+        for job in jobs:
+            job.cancel()
+    return 200, {"host": host, "online": online, "ms": ms if online else None}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
@@ -247,6 +372,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*tailscale_status())
         if path == "/api/torrents":
             return self.send_json(*utorrent.status())
+        if path == "/api/weather":
+            return self.send_json(*weather.status())
+        if path == "/api/ping":
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            host = q.get("host", [""])[0].strip()
+            ports = [int(p) for p in q.get("ports", [""])[0].split(",") if p.isdigit() and 0 < int(p) < 65536][:5]
+            return self.send_json(*device_status(host, ports))
         if self.is_private():
             return self.send_json(404, {"error": "not_found"})
         super().do_GET()

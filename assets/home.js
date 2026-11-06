@@ -7,7 +7,9 @@
 
   // ---------- Smart home summary ----------
   const refreshStatus = async () => {
-    const [servers, ts] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status()]);
+    const [servers, ts, devices] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status(), DeskDevices.checkAll()]);
+    const dv = DeskDevices.summary(devices);
+    $('stat-devices').textContent = dv.total ? `${dv.online}/${dv.total}` : '–';
     const sv = DeskServers.summary(servers);
     $('stat-servers').textContent = `${sv.up}/${sv.total}`;
     const t = DeskTailscale.summary(ts);
@@ -15,6 +17,30 @@
   };
   refreshStatus();
   setInterval(refreshStatus, 60000);
+
+  // ---------- Weather ----------
+  const refreshWeather = async () => {
+    const w = await DeskWeather.get();
+    if (w.error === 'bad_key') {
+      // New OpenWeatherMap keys can take a couple of hours to start working.
+      $('weather').hidden = false;
+      $('wx-icon').innerHTML = icon('cloud', 30);
+      $('wx-temp').textContent = '–';
+      $('wx-cond').textContent = 'Weather key not active yet';
+      $('wx-range').textContent = '';
+      return;
+    }
+    if (w.error) { if (w.error !== 'unreachable') $('weather').hidden = true; return; } // keep last reading on a blip
+    const unit = w.units === 'imperial' ? '°F' : '°C';
+    $('weather').hidden = false;
+    $('wx-icon').innerHTML = icon(DeskWeather.icon(w.icon), 30);
+    $('wx-temp').textContent = `${w.temp}°`;
+    $('wx-cond').textContent = w.description ? w.description[0].toUpperCase() + w.description.slice(1) : w.condition;
+    $('wx-range').textContent = `H ${w.high}° · L ${w.low}°`;
+    $('weather').title = `${w.city} · feels like ${w.feelsLike}${unit}`;
+  };
+  refreshWeather();
+  setInterval(refreshWeather, 5 * 60 * 1000);
 
   // ---------- Downloads (uTorrent) ----------
   const escHtml = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

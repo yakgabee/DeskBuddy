@@ -19,15 +19,22 @@
         <div class="sub" id="sh-summary"></div>
       </div>
       <nav class="tabs" id="tabs" role="tablist">
-        <button class="tab active" data-tab="servers" role="tab"><span data-icon="server" data-size="16"></span>Servers<span class="count" id="tab-servers"></span></button>
+        <button class="tab active" data-tab="devices" role="tab"><span data-icon="home" data-size="16"></span>Devices<span class="count" id="tab-devices"></span></button>
+        <button class="tab" data-tab="servers" role="tab"><span data-icon="server" data-size="16"></span>Servers<span class="count" id="tab-servers"></span></button>
         <button class="tab" data-tab="downloads" role="tab"><span data-icon="download" data-size="16"></span>Downloads<span class="count" id="tab-downloads"></span></button>
         <button class="tab" data-tab="tailscale" role="tab"><span data-icon="network" data-size="16"></span>Tailscale<span class="count" id="tab-tailscale"></span></button>
       </nav>
       <div class="sh-clock" id="sh-clock"></div>
     </header>
 
+    <!-- Devices -->
+    <section class="panel" id="panel-devices" role="tabpanel">
+      <div class="panel-bar"><span class="muted" id="dev-meta">Checking devices…</span></div>
+      <div class="dev-grid" id="devices"></div>
+    </section>
+
     <!-- Servers -->
-    <section class="panel" id="panel-servers" role="tabpanel">
+    <section class="panel" id="panel-servers" role="tabpanel" hidden>
       <div class="panel-bar">
         <span class="muted">Checked <span id="srv-checked">–</span></span>
         <button class="open-btn" id="srv-refresh">Check now</button>
@@ -59,6 +66,7 @@
   <script src="assets/servers.js"></script>
   <script src="assets/tailscale.js"></script>
   <script src="assets/torrents.js"></script>
+  <script src="assets/devices.js"></script>
   <script src="assets/smart-home.js"></script>
 </body>
 </html>

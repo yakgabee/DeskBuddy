@@ -3,15 +3,15 @@
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   DeskClock.start({ short: $('sh-clock') });
 
-  const summary = { servers: '', downloads: '', tailscale: '' };
+  const summary = { devices: '', servers: '', downloads: '', tailscale: '' };
   const renderSummary = () => {
-    $('sh-summary').textContent = [summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
+    $('sh-summary').textContent = [summary.devices, summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
   };
 
   // ---------- Tabs ----------
-  const TABS = ['servers', 'downloads', 'tailscale'];
+  const TABS = ['devices', 'servers', 'downloads', 'tailscale'];
   function showTab(name) {
-    if (!TABS.includes(name)) name = 'servers';
+    if (!TABS.includes(name)) name = 'devices';
     document.querySelectorAll('.tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === name);
       t.setAttribute('aria-selected', t.dataset.tab === name);
@@ -24,6 +24,43 @@
     if (t) showTab(t.dataset.tab);
   });
   showTab(location.hash.slice(1));
+
+  // ---------- Devices (computer, Apple TV, …) ----------
+  const DEV_STATUS = {
+    online: 'Online', offline: 'Offline', checking: 'Checking…',
+    unset: 'Not set up', invalid: 'Check the address', no_server: 'Start with start.sh / kiosk.sh',
+  };
+  let devices = DeskDevices.list().map(d => ({ ...d, status: d.host ? 'checking' : 'unset' }));
+
+  function renderDevices() {
+    $('devices').innerHTML = devices.length ? devices.map(d => {
+      const statusClass = d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';
+      return `<article class="dev card ${d.status}">
+        <div class="dev-icon">${icon(d.icon || 'server', 28)}</div>
+        <div class="dev-name">${esc(d.name)}</div>
+        <span class="status ${statusClass}">${DEV_STATUS[d.status] || d.status}</span>
+        <div class="dev-sub">${d.host
+          ? `<code>${esc(d.host)}</code>${d.status === 'online' && d.ms != null ? ` · ${d.ms} ms` : ''}`
+          : 'Add its IP address in <code>assets/config.js</code>'}</div>
+      </article>`;
+    }).join('') : '<p class="ts-empty">No devices yet. Add them in <code>assets/config.js</code>.</p>';
+    const sum = DeskDevices.summary(devices);
+    const done = devices.every(d => d.status !== 'checking');
+    if (done) {
+      $('dev-meta').textContent = sum.total ? `${sum.online} of ${sum.total} online` : 'No devices set up';
+      $('tab-devices').textContent = sum.total ? `${sum.online}/${sum.total}` : '';
+      summary.devices = sum.total ? `${sum.online}/${sum.total} devices online` : '';
+      renderSummary();
+    }
+  }
+
+  async function checkDevices() {
+    devices = await DeskDevices.checkAll();
+    renderDevices();
+  }
+  renderDevices();
+  checkDevices();
+  setInterval(checkDevices, 15000);
 
   // ---------- Servers ----------
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };

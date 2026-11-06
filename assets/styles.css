@@ -69,9 +69,18 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .clock {
   padding: 32px 36px;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
 }
+.clock-main { display: flex; flex-direction: column; min-width: 0; }
+.weather { display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 4px; flex-shrink: 0; }
+.weather[hidden] { display: none; }
+.wx-now { display: flex; align-items: center; gap: 10px; }
+.wx-icon { color: var(--amber); }
+.wx-temp { font-size: clamp(32px, 4vw, 52px); font-weight: 600; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wx-cond { font-size: 15px; font-weight: 500; }
+.wx-range { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .greeting { font-size: 15px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
 .clock-time {
   font-size: clamp(64px, 9vw, 120px);
@@ -98,7 +107,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .tile-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--surface-2); }
 .tile-arrow { color: var(--subtle); transition: transform 0.15s, color 0.15s; }
 .smart-home-tile:hover .tile-arrow { transform: translateX(3px); color: var(--text); }
-.tile-stats { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 12px 36px; margin-top: 24px; }
+.tile-stats { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 12px 36px; margin-top: 24px; }
 .stat-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; font-weight: 500; }
 
@@ -266,6 +275,17 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .section-head-row .section-head { margin: 0; }
 .section-head-row .muted { font-size: 13px; }
 
+/* ---------- Devices (computer, Apple TV, …) ---------- */
+.dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.dev { padding: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.dev-icon { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.dev.online .dev-icon { background: rgba(34,197,94,0.15); color: var(--green); }
+.dev.offline { opacity: 0.6; }
+.dev-name { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.dev-sub { font-size: 13px; color: var(--muted); }
+.dev-sub code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--text); }
+.status.unset::before, .status.invalid::before, .status.no_server::before { background: var(--subtle); }
+
 /* ---------- Torrents list ---------- */
 .tor-row { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(160px, 1fr) 150px 110px 140px; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--border); font-size: 13px; }
 .tor-row:first-child { border-top: none; }
@@ -372,7 +392,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .sh-page { height: auto; }
   .panel { overflow: visible; }
   .tabs { order: 5; width: 100%; margin: 4px 0 0; }
-  .tab { flex: 1; justify-content: center; padding: 0 8px; }
+  .tab { flex: 1; justify-content: center; padding: 0 4px; gap: 4px; font-size: 12px; min-width: 0; }
+  .tab > span[data-icon] { display: none; }
   .srv-summary { gap: 8px; }
   .srv-stat { padding: 14px; }
   .srv-stat .stat-value { font-size: 22px; }
@@ -385,7 +406,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .card { border-radius: 14px; }
 
   .dashboard { padding: 10px; gap: 10px; grid-template-columns: 1.3fr 1fr; }
-  .clock { padding: 12px 20px; justify-content: center; }
+  .clock { padding: 12px 20px; align-items: center; }
+  .wx-temp { font-size: min(8vh, 40px); }
+  .wx-icon .i { width: 26px; height: 26px; }
+  .wx-cond { font-size: 12px; }
+  .wx-range { font-size: 11px; }
   .greeting { font-size: 12px; margin-bottom: 2px; }
   .clock-time { font-size: min(13vh, 9vw); }
   .clock-time .ampm { margin-left: 6px; }
@@ -394,7 +419,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .smart-home-tile { padding: 12px 16px; }
   .tile-title { font-size: 15px; gap: 10px; }
   .tile-icon { width: 32px; height: 32px; border-radius: 10px; }
-  .tile-stats { margin-top: 8px; gap: 4px 24px; }
+  .tile-stats { margin-top: 8px; gap: 4px 18px; }
   .stat-value { font-size: 22px; }
   .stat-label { font-size: 11px; }
 
@@ -431,11 +456,14 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 
   .sh-page { padding: 10px 12px; }
   .sh-header .sub { display: none; }
-  .tab { min-height: 40px; padding: 0 14px; font-size: 13px; }
+  .sh-header { flex-wrap: nowrap; }
+  .sh-header h1 { white-space: nowrap; }
+  .tab { min-height: 40px; padding: 0 12px; font-size: 13px; gap: 6px; }
+  .tab > span[data-icon] { display: none; }
   .panel { gap: 8px; }
   .panel-bar { min-height: 30px; }
   .sh-header { margin-bottom: 12px; gap: 10px; }
-  .sh-header h1 { font-size: 22px; }
+  .sh-header h1 { font-size: 20px; }
   .sh-header .sub { font-size: 12px; }
   .sh-clock { font-size: 18px; }
   .back-btn { width: 44px; height: 44px; }
@@ -453,6 +481,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .ts-row .ip, .ts-row .status, .tor-row .tor-prog, .tor-row .status { grid-column: auto; grid-row: auto; }
   .ts-row .ip { margin-left: -8px; }
   .ts-row .server-icon { width: 34px; height: 34px; }
+  .dev { padding: 14px; gap: 8px; }
+  .dev-icon { width: 46px; height: 46px; border-radius: 14px; }
   .open-btn { padding: 9px 12px; }
 }
 

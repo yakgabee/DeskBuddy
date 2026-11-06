@@ -1,7 +1,8 @@
 # DeskBuddy
 
-A desktop home dashboard: clock, Spotify now-playing with synced lyrics, uTorrent
-downloads, and a Smart Home page with live server, download and Tailscale status.
+A desktop home dashboard: clock and weather, Spotify now-playing with synced
+lyrics, uTorrent downloads, and a Smart Home page with tabs for your devices
+(computer, Apple TV), servers, downloads and Tailscale.
 
 ## Run it
 
@@ -58,6 +59,32 @@ Everything lives in [`assets/config.js`](assets/config.js):
   must never be put in this project**.
 - **Servers:** the list shown on the Smart Home page. Jellyfin servers also show
   their name and version.
+
+## Weather
+
+The clock card shows the current weather and today's high/low from
+[OpenWeatherMap](https://openweathermap.org). Add your API key to
+`local-settings.json` (it stays on your computer; `server.py` makes the calls):
+
+```json
+{
+  "weather": { "apiKey": "your-openweathermap-api-key" }
+}
+```
+
+Your location is worked out from your internet connection. To pick it yourself,
+add `"city": "Austin,US"` (or `"lat"` and `"lon"`). Units are °F in the US and °C
+elsewhere; force one with `"units": "imperial"` or `"units": "metric"`.
+
+New OpenWeatherMap keys can take up to a couple of hours to start working; until
+then the dashboard says "Weather key not active yet".
+
+## Devices (computer, Apple TV)
+
+Smart Home → **Devices** shows whether each device is online. Edit the `devices`
+list in `assets/config.js`: give each one its IP address on your home network.
+Optionally add a `port` the device always has open for a more reliable check
+(Apple TV: `7000`). Find an Apple TV's IP in **Settings → Network**.
 
 ## Show a server's RAM and storage
 

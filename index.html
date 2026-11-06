@@ -14,9 +14,16 @@
   <main class="dashboard">
     <!-- Time & date -->
     <section class="clock card">
-      <div class="greeting" id="greeting">Good evening</div>
-      <div class="clock-time" id="time">--:--<span class="ampm"></span></div>
-      <div class="clock-date" id="date"></div>
+      <div class="clock-main">
+        <div class="greeting" id="greeting">Good evening</div>
+        <div class="clock-time" id="time">--:--<span class="ampm"></span></div>
+        <div class="clock-date" id="date"></div>
+      </div>
+      <div class="weather" id="weather" hidden>
+        <div class="wx-now"><span class="wx-icon" id="wx-icon"></span><span class="wx-temp" id="wx-temp"></span></div>
+        <div class="wx-cond" id="wx-cond"></div>
+        <div class="wx-range" id="wx-range"></div>
+      </div>
     </section>
 
     <!-- Smart Home widget -->
@@ -26,6 +33,7 @@
         <span class="tile-arrow" data-icon="chevronRight"></span>
       </div>
       <div class="tile-stats">
+        <div><div class="stat-value" id="stat-devices">–</div><div class="stat-label">Devices online</div></div>
         <div><div class="stat-value" id="stat-servers">–</div><div class="stat-label">Servers up</div></div>
         <div><div class="stat-value" id="stat-ts">–</div><div class="stat-label">Tailscale online</div></div>
       </div>
@@ -95,6 +103,8 @@
   <script src="assets/servers.js"></script>
   <script src="assets/tailscale.js"></script>
   <script src="assets/torrents.js"></script>
+  <script src="assets/devices.js"></script>
+  <script src="assets/weather.js"></script>
   <script src="assets/spotify-mock.js"></script>
   <script src="assets/spotify.js"></script>
   <script src="assets/lyrics.js"></script>

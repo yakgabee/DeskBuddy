@@ -34,6 +34,15 @@ window.DESKBUDDY_CONFIG = {
     //   type: 'web', url: 'http://192.168.1.10:8123' },
   ],
 
+  // Devices on Smart Home → Devices, shown as online/offline.
+  // host: the device's IP address on your home network.
+  // port (optional): a port the device always has open, for a more reliable check
+  //   (Apple TV: 7000 for AirPlay; Windows PC with uTorrent's Web UI: 8080).
+  devices: [
+    { id: 'computer', name: 'Computer', icon: 'laptop', host: '10.0.10.132', port: 8080 },
+    { id: 'apple-tv', name: 'Apple TV', icon: 'tv', host: '', port: 7000 }, // ← put your Apple TV's IP here
+  ],
+
   // Tailscale devices are read from the Tailscale app on this computer
   // (via server.py) — nothing to set up here.
 };
