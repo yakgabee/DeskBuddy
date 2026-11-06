@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeskBuddy · Smart Home</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="sh-page">
+    <header class="sh-header">
+      <a class="back-btn card" href="index.html" aria-label="Back to dashboard">←</a>
+      <div>
+        <h1>Smart Home</h1>
+        <div class="sub" id="sh-summary"></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="sh-clock" id="sh-clock"></div>
+    </header>
+
+    <div class="scenes" id="scenes">
+      <button class="scene card" data-scene="morning">☀️ Good Morning</button>
+      <button class="scene card" data-scene="focus">🎧 Focus</button>
+      <button class="scene card" data-scene="movie">🎬 Movie Night</button>
+      <button class="scene card" data-scene="away">🚪 Away</button>
+      <button class="scene card" data-scene="night">🌙 Good Night</button>
+    </div>
+
+    <div class="rooms" id="rooms"></div>
+    <section class="devices" id="devices"></section>
+  </main>
+
+  <div class="draft-badge">Draft · demo devices</div>
+
+  <script src="assets/clock.js"></script>
+  <script src="assets/devices.js"></script>
+  <script src="assets/smart-home.js"></script>
+</body>
+</html>

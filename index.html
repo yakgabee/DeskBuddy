@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeskBuddy</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="dashboard">
+    <!-- Time & date -->
+    <section class="clock card">
+      <div class="greeting" id="greeting">Good evening</div>
+      <div class="clock-time" id="time">--:--<span class="ampm"></span></div>
+      <div class="clock-date" id="date"></div>
+    </section>
+
+    <!-- Smart Home widget -->
+    <a class="smart-home-tile card" href="smart-home.html" aria-label="Open Smart Home">
+      <div class="tile-head">
+        <div class="tile-title"><span class="tile-icon">🏠</span>Smart Home</div>
+        <span class="tile-arrow">→</span>
+      </div>
+      <div class="tile-stats">
+        <div><div class="stat-value" id="stat-on">–</div><div class="stat-label">Devices on</div></div>
+        <div><div class="stat-value" id="stat-temp">–</div><div class="stat-label">Thermostat</div></div>
+        <div><div class="stat-value" id="stat-lock">–</div><div class="stat-label">Front door</div></div>
+      </div>
+    </a>
+
+    <!-- Spotify now playing -->
+    <section class="now-playing card" id="now-playing">
+      <div class="np-bg"></div>
+      <div class="cover-wrap">
+        <button class="cover" id="cover" aria-label="Show lyrics">
+          <span id="cover-art"></span>
+          <span class="cover-hint">Tap for lyrics</span>
+        </button>
+      </div>
+      <div class="np-info">
+        <div class="np-label"><span class="eq"><span></span><span></span><span></span></span>Now playing on Spotify</div>
+        <div class="np-title" id="np-title">—</div>
+        <div class="np-artist" id="np-artist">—</div>
+        <div class="np-album" id="np-album">—</div>
+        <div class="progress">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
+        </div>
+        <div class="controls">
+          <button class="ctrl" id="btn-prev" aria-label="Previous">⏮</button>
+          <button class="ctrl play" id="btn-play" aria-label="Play/Pause">⏸</button>
+          <button class="ctrl" id="btn-next" aria-label="Next">⏭</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Lyrics overlay -->
+  <div class="lyrics" id="lyrics" role="dialog" aria-label="Lyrics">
+    <div class="lyrics-head">
+      <div class="mini-cover" id="lyrics-cover"></div>
+      <div class="meta"><b id="lyrics-title"></b><span class="muted" id="lyrics-artist"></span></div>
+      <button class="close-btn" id="lyrics-close" aria-label="Close lyrics">✕</button>
+    </div>
+    <div class="lyrics-body" id="lyrics-body"></div>
+  </div>
+
+  <div class="draft-badge">Draft · demo data</div>
+
+  <script src="assets/clock.js"></script>
+  <script src="assets/devices.js"></script>
+  <script src="assets/spotify-mock.js"></script>
+  <script src="assets/home.js"></script>
+</body>
+</html>
