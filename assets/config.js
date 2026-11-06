@@ -9,13 +9,7 @@ window.DESKBUDDY_CONFIG = {
     redirectUri: 'http://127.0.0.1:9090/',
   },
 
-  // Your Evolux (Smart Life) light. The connection itself is set up once with
-  // tinytuya — see "Connect your Evolux light" in the README.
-  light: {
-    name: 'Smart Light',
-  },
-
-  // Servers shown on Smart Home → Servers.
+  // Servers shown on Smart Home.
   // type 'jellyfin' reads the server name and version from Jellyfin.
   // type 'web' just checks that the address answers.
   servers: [
