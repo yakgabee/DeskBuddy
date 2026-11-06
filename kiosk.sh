@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Raspberry Pi / Linux: start DeskBuddy and open it full-screen (kiosk mode).
-# Exit kiosk mode with Alt+F4.
+# Exit kiosk mode with Alt+F4. The mouse pointer is hidden on the dashboard.
 cd "$(dirname "$0")"
 
 # Start the DeskBuddy server (skipped if it's already running).
@@ -21,4 +21,4 @@ if [ -z "$BROWSER" ]; then
 fi
 
 exec "$BROWSER" --kiosk --noerrdialogs --disable-infobars --hide-crash-restore-bubble \
-  --password-store=basic --check-for-update-interval=31536000 http://127.0.0.1:9090/
+  --password-store=basic --check-for-update-interval=31536000 "http://127.0.0.1:9090/?kiosk"

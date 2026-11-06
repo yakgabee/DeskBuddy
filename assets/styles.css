@@ -34,6 +34,9 @@ body {
 html, * { scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; }
 
+/* Kiosk mode (kiosk.sh): no mouse pointer on the touch screen. */
+.kiosk, .kiosk * { cursor: none !important; }
+
 /* The home screen is laid out to fit exactly, so it never scrolls. */
 @media (min-width: 701px) {
   body.home { height: 100vh; overflow: hidden; }

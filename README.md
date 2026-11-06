@@ -32,7 +32,9 @@ cd ~/DeskBuddy
 ./kiosk.sh
 ```
 
-`kiosk.sh` starts DeskBuddy and opens it full-screen in Chromium. Press `Alt+F4` to exit.
+`kiosk.sh` starts DeskBuddy and opens it full-screen in Chromium, with the mouse
+pointer hidden. Press `Alt+F4` to exit. (To show the pointer again on that screen,
+open `http://127.0.0.1:9090/?kiosk=0`.)
 
 **Start it automatically when the Pi boots** (Raspberry Pi OS Bookworm):
 
