@@ -23,8 +23,9 @@
   // ---------- Smart light ----------
   const lightCfg = DeskLight.config();
   let light = DeskLight.load();
+  let lightLive = false;      // true once the real bulb answers
+  let pending = 0;            // requests in flight (skip polling meanwhile)
   $('light-name').textContent = lightCfg.name;
-  $('light-notice').hidden = !!lightCfg.connected;
 
   $('swatches').innerHTML = Object.entries(DeskLight.COLORS).map(([key, c]) =>
     `<button class="swatch" data-color="${key}" style="--sw:${c.hex}" aria-label="${c.label}" title="${c.label}"></button>`).join('');
@@ -50,17 +51,46 @@
     renderSummary();
   }
 
-  function setLight(changes, scene = null) {
-    light = { ...light, ...changes, scene };
+  // Apply what the real bulb reports.
+  function applyRemote(r) {
+    lightLive = !!r.connected;
+    $('light-notice').hidden = lightLive;
+    if (!lightLive) {
+      $('light-problem').innerHTML = DeskLight.PROBLEMS[r.error] || DeskLight.PROBLEMS.unreachable;
+      return;
+    }
+    light = { ...light, on: r.on, brightness: r.brightness ?? light.brightness };
     DeskLight.save(light);
     renderLight();
   }
 
+  async function sendLight(changes) {
+    if (!lightLive) return;
+    pending++;
+    const r = await DeskLight.send(changes);
+    pending--;
+    if (!pending) applyRemote(r);
+  }
+
+  let brightTimer;
+  function setLight(changes, scene = null, { send = true, debounce = false } = {}) {
+    light = { ...light, ...changes, scene };
+    DeskLight.save(light);
+    renderLight();
+    if (!send) return;
+    // The bulb needs the colour with brightness so whites keep their tone.
+    const payload = { ...changes };
+    if ('brightness' in payload && !('color' in payload)) payload.color = light.color;
+    clearTimeout(brightTimer);
+    if (debounce) brightTimer = setTimeout(() => sendLight(payload), 250);
+    else sendLight(payload);
+  }
+
   $('light-toggle').onclick = () => setLight({ on: !light.on });
-  $('light-bright').oninput = e => setLight({ brightness: Number(e.target.value) });
+  $('light-bright').oninput = e => setLight({ brightness: Number(e.target.value) }, null, { debounce: true });
   $('swatches').onclick = e => {
     const b = e.target.closest('[data-color]');
-    if (b) setLight({ color: b.dataset.color, on: true });
+    if (b) setLight({ color: b.dataset.color, on: true, brightness: light.brightness });
   };
   $('scenes').onclick = e => {
     const b = e.target.closest('[data-scene]');
@@ -71,6 +101,11 @@
     setLight({ on, brightness, color }, key);
   };
   renderLight();
+
+  // Pick up changes made elsewhere (Alexa, the wall switch…).
+  const pollLight = async () => { if (!pending) applyRemote(await DeskLight.fetch()); };
+  pollLight();
+  setInterval(pollLight, 10000);
 
   // ---------- Servers ----------
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };

@@ -6,9 +6,13 @@
   DeskClock.start({ time: $('time'), date: $('date'), greeting: $('greeting') });
 
   // ---------- Smart home summary ----------
-  const light = DeskLight.load();
-  $('stat-light').textContent = light.on ? `${light.brightness}%` : 'Off';
   $('stat-light-label').textContent = DeskLight.config().name;
+  const refreshLight = async () => {
+    const r = await DeskLight.fetch();
+    $('stat-light').textContent = !r.connected ? '–' : r.on ? `${r.brightness ?? 100}%` : 'Off';
+  };
+  refreshLight();
+  setInterval(refreshLight, 15000);
   const refreshStatus = async () => {
     const [servers, ts] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status()]);
     const sv = DeskServers.summary(servers);

@@ -9,11 +9,10 @@ window.DESKBUDDY_CONFIG = {
     redirectUri: 'http://127.0.0.1:9090/',
   },
 
-  // Your smart light (works with Alexa). Controls are a preview until the
-  // light's brand is connected.
+  // Your Evolux (Smart Life) light. The connection itself is set up once with
+  // tinytuya — see "Connect your Evolux light" in the README.
   light: {
     name: 'Smart Light',
-    connected: false,
   },
 
   // Servers shown on Smart Home → Servers.

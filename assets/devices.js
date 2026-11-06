@@ -1,4 +1,6 @@
-// Smart light state. Saved in this browser until the real light is connected.
+// Smart light: talks to server.py (/api/light), which controls the Smart Life
+// (Tuya) bulb over your Wi-Fi. Falls back to a saved preview state when the
+// light isn't set up yet.
 (() => {
   const KEY = 'deskbuddy.light';
 
@@ -25,8 +27,31 @@
 
   const DEFAULT = { on: true, brightness: 70, color: 'warm', scene: null };
 
+  const PROBLEMS = {
+    no_server: 'Start DeskBuddy with <code>start.sh</code> or <code>start.bat</code> to control your light.',
+    no_tinytuya: 'One step left: install the light helper by running <code>pip install tinytuya</code>, then restart DeskBuddy.',
+    not_set_up: 'Your light isn\'t connected yet. Follow “Connect your Evolux light” in the README (about 10 minutes, once).',
+    not_found: 'DeskBuddy couldn\'t find your light on the Wi-Fi. Make sure it\'s powered on, then run <code>python -m tinytuya scan</code> in the DeskBuddy folder.',
+    unreachable: 'Your light isn\'t answering. Check it\'s powered on and connected to Wi-Fi.',
+  };
+
+  async function call(method, body) {
+    try {
+      const r = await fetch('/api/light', {
+        method,
+        cache: 'no-store',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (r.status === 404 || r.status === 501) return { connected: false, error: 'no_server' };
+      return await r.json();
+    } catch (e) {
+      return { connected: false, error: 'no_server' };
+    }
+  }
+
   window.DeskLight = {
-    COLORS, SCENES,
+    COLORS, SCENES, PROBLEMS,
     config() { return window.DESKBUDDY_CONFIG.light || { name: 'Smart Light' }; },
     load() {
       try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY)) }; }
@@ -34,5 +59,8 @@
     },
     save(state) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} },
     stateText(s) { return s.on ? `On · ${s.brightness}%` : 'Off'; },
+    // Real light. Both resolve to { connected, on, brightness, name } or { connected: false, error }.
+    fetch() { return call('GET'); },
+    send(changes) { return call('POST', changes); },
   };
 })();
