@@ -9,6 +9,8 @@
   $('stat-on').textContent = s.active;
   $('stat-temp').textContent = s.temp;
   $('stat-lock').textContent = s.door;
+  const sv = DeskServers.summary(DeskServers.load());
+  $('stat-servers').textContent = `${sv.up}/${sv.total}`;
 
   // Now playing
   const player = MockPlayer;

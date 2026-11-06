@@ -115,4 +115,64 @@
   });
 
   render();
+
+  // ---------- Tabs ----------
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    $('panel-devices').hidden = name !== 'devices';
+    $('panel-servers').hidden = name !== 'servers';
+    history.replaceState(null, '', name === 'servers' ? '#servers' : '#');
+  }
+  $('tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (t) showTab(t.dataset.tab);
+  });
+
+  // ---------- Servers ----------
+  const servers = DeskServers.load();
+  const STATUS = { up: 'Running', warn: 'Slow', down: 'Stopped' };
+  const uptime = h => h === 0 ? '—' : h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h`;
+  const meter = (label, v) => `<div>
+      <div class="meter-label"><span>${label}</span><span>${v}%</span></div>
+      <div class="meter"><div class="${v >= 70 ? 'hot' : ''}" style="width:${v}%"></div></div>
+    </div>`;
+
+  function renderServers() {
+    // Running first, then slow, then stopped
+    const order = { up: 0, warn: 1, down: 2 };
+    const list = [...servers].sort((a, b) => order[a.status] - order[b.status]);
+    $('servers').innerHTML = list.map(s => `
+      <article class="server card ${s.status}" style="--srv-color:${s.color}">
+        <div class="server-top">
+          <div class="server-icon">${s.icon}</div>
+          <div class="grow">
+            <div class="server-name">${s.name}</div>
+            <div class="server-desc">${s.desc}</div>
+          </div>
+          <span class="status-pill ${s.status}">${STATUS[s.status]}</span>
+        </div>
+        <div class="meters">${meter('CPU', s.cpu)}${meter('Memory', s.ram)}</div>
+        <div class="server-foot">
+          <div class="foot-info">
+            <code>${s.host}:${s.port}</code>
+            <span>${s.status === 'down' ? 'Offline' : 'Up ' + uptime(s.uptimeH)}${s.ping ? ` · ${s.ping} ms` : ''}</span>
+          </div>
+          ${s.status !== 'down' ? `<a class="open-btn" href="http://${s.host}:${s.port}" target="_blank" rel="noopener">Open ↗</a>` : ''}
+        </div>
+      </article>`).join('');
+
+    const sum = DeskServers.summary(servers);
+    const running = servers.filter(s => s.status !== 'down');
+    $('srv-count').textContent = `${sum.up}/${sum.total}`;
+    $('srv-up').textContent = sum.up;
+    $('srv-down').textContent = sum.total - sum.up;
+    $('srv-down').classList.toggle('bad', sum.total - sum.up > 0);
+    $('srv-cpu').textContent = running.length ? Math.round(running.reduce((a, s) => a + s.cpu, 0) / running.length) + '%' : '–';
+    $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  }
+
+  renderServers();
+  setInterval(() => { DeskServers.jitter(servers); renderServers(); }, 5000);
+
+  if (location.hash === '#servers') showTab('servers');
 })();

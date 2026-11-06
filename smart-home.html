@@ -18,6 +18,12 @@
       <div class="sh-clock" id="sh-clock"></div>
     </header>
 
+    <nav class="tabs card" id="tabs">
+      <button class="tab active" data-tab="devices">🏠 Devices</button>
+      <button class="tab" data-tab="servers">🖥️ Servers <span class="count" id="srv-count"></span></button>
+    </nav>
+
+    <div class="panel" id="panel-devices">
     <div class="scenes" id="scenes">
       <button class="scene card" data-scene="morning">☀️ Good Morning</button>
       <button class="scene card" data-scene="focus">🎧 Focus</button>
@@ -28,12 +34,24 @@
 
     <div class="rooms" id="rooms"></div>
     <section class="devices" id="devices"></section>
+    </div>
+
+    <div class="panel" id="panel-servers" hidden>
+      <div class="srv-summary">
+        <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
+        <div class="srv-stat card"><div class="stat-value" id="srv-down">–</div><div class="stat-label">Stopped</div></div>
+        <div class="srv-stat card"><div class="stat-value" id="srv-cpu">–</div><div class="stat-label">Avg CPU</div></div>
+        <div class="srv-stat card"><div class="stat-value" id="srv-checked">–</div><div class="stat-label">Last checked</div></div>
+      </div>
+      <section class="servers" id="servers"></section>
+    </div>
   </main>
 
-  <div class="draft-badge">Draft · demo devices</div>
+  <div class="draft-badge">Draft · demo data</div>
 
   <script src="assets/clock.js"></script>
   <script src="assets/devices.js"></script>
+  <script src="assets/servers.js"></script>
   <script src="assets/smart-home.js"></script>
 </body>
 </html>
