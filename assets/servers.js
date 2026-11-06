@@ -17,6 +17,15 @@
 
   async function checkUrl(server, url) {
     const base = url.replace(/\/+$/, '');
+    if (server.type === 'agent') {
+      let stats;
+      const ms = await timed(async () => {
+        const r = await fetch(`${base}/stats`, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) });
+        if (!r.ok) throw new Error(r.status);
+        stats = await r.json();
+      });
+      return { ms, stats };
+    }
     if (server.type === 'jellyfin') {
       try {
         let info;

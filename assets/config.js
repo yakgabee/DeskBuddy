@@ -21,6 +21,14 @@ window.DESKBUDDY_CONFIG = {
       type: 'jellyfin',
       url: 'https://www.gabe-server.com',
     },
+    {
+      id: 'local-server',
+      name: 'Local Server',
+      desc: 'Home server',
+      icon: 'server',
+      type: 'agent',
+      url: 'http://10.0.10.141:9091',
+    },
     // Add more like this:
     // { id: 'homeassistant', name: 'Home Assistant', desc: 'Home automation', icon: 'home',
     //   type: 'web', url: 'http://192.168.1.10:8123' },

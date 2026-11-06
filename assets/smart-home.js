@@ -29,6 +29,12 @@
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };
   const host = url => { try { return new URL(url).host; } catch (e) { return url; } };
   const row = (label, value) => `<div class="info-row"><span>${label}</span><span>${value}</span></div>`;
+  const gb = n => n >= 1e12 ? `${(n / 1e12).toFixed(1)} TB` : `${Math.round(n / 1e9)} GB`;
+  const usage = (label, u, hotAt) => `<div class="usage">
+      <div class="meter-label"><span>${esc(label)}</span><span>${Math.round(u.percent)}% <em>· ${gb(u.used)} of ${gb(u.total)}</em></span></div>
+      <div class="meter"><div class="${u.percent >= hotAt ? 'hot' : ''}" style="width:${u.percent}%"></div></div>
+    </div>`;
+  const diskLabel = d => d.mount === '/' ? 'Storage' : `Storage ${d.mount}`;
   let servers = DeskServers.list().map(s => ({ ...s, status: 'checking' }));
 
   function renderServers() {
@@ -36,6 +42,27 @@
     const list = [...servers].sort((a, b) => order[a.status] - order[b.status]);
     $('servers').innerHTML = list.length ? list.map(s => {
       const live = s.status === 'up' || s.status === 'warn';
+      if (s.type === 'agent') {
+        const st = live && s.stats;
+        const body = st
+          ? [st.ram ? usage('RAM', st.ram, 85) : '', ...st.disks.map(d => usage(diskLabel(d), d, 90))].join('')
+          : s.status === 'down' ? '<p class="server-hint">Not answering. Is <code>deskbuddy-agent.py</code> running on it?</p>' : '';
+        return `<article class="server card ${s.status}">
+          <div class="server-top">
+            <div class="server-icon">${icon(s.icon || 'server')}</div>
+            <div class="grow">
+              <div class="server-name">${esc(s.name)}</div>
+              <div class="server-desc">${esc(st ? st.hostname : s.desc)}</div>
+            </div>
+            <span class="status ${s.status}">${STATUS[s.status]}</span>
+          </div>
+          ${body ? `<div class="usages">${body}</div>` : ''}
+          <div class="server-foot">
+            <code>${esc(host(s.url).replace(/:9091$/, ''))}</code>
+            ${live ? `<span>${s.ms} ms</span>` : ''}
+          </div>
+        </article>`;
+      }
       const rows = [
         live ? row('Response', `${s.ms} ms`) : '',
         s.version ? row('Version', esc(s.version)) : '',

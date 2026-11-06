@@ -59,6 +59,45 @@ Everything lives in [`assets/config.js`](assets/config.js):
 - **Servers:** the list shown on the Smart Home page. Jellyfin servers also show
   their name and version.
 
+## Show a server's RAM and storage
+
+`agent/deskbuddy-agent.py` is a tiny read-only helper that reports a computer's RAM
+and storage. It needs only Python 3 and works on Linux and Windows. Run it on each
+server you want to watch, then add the server to `assets/config.js` with
+`type: 'agent'` (the Local Server at `10.0.10.141` is already there).
+
+**On a Linux server**, install it and keep it running (also after reboots):
+
+```bash
+sudo curl -o /opt/deskbuddy-agent.py https://raw.githubusercontent.com/yakgabee/DeskBuddy/claude/desktop-home-dashboard-3txbxr/agent/deskbuddy-agent.py
+```
+
+```bash
+sudo tee /etc/systemd/system/deskbuddy-agent.service >/dev/null <<'UNIT'
+[Unit]
+Description=DeskBuddy agent (RAM and storage for the dashboard)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/deskbuddy-agent.py
+Restart=always
+DynamicUser=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo systemctl enable --now deskbuddy-agent
+```
+
+Check it from the Pi with `curl http://10.0.10.141:9091/stats`. If that times out
+and the server uses a firewall (`ufw`), allow your network:
+`sudo ufw allow from 10.0.10.0/24 to any port 9091`.
+
+**On a Windows server:** run `python deskbuddy-agent.py` (to start it at login, add
+it to Task Scheduler) and allow Python through Windows Firewall when asked.
+
+The agent only reports numbers (hostname, RAM, disk usage); it can't change anything.
+
 ## Show uTorrent downloads
 
 While something is downloading, a **Downloading** card appears on the home screen
