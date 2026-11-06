@@ -190,7 +190,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 
 /* Empty / connect states */
 .cover-icon { display: none; }
-.is-empty .cover { background: var(--surface-2); color: var(--subtle); cursor: default; display: grid; place-items: center; box-shadow: none; }
+.is-empty .cover { background: var(--surface-2); color: var(--subtle); cursor: default; display: grid; place-items: center; place-content: center; box-shadow: none; }
 .is-empty .cover:hover { transform: none; }
 .is-empty .cover-icon { display: grid; place-items: center; width: 100%; }
 .is-empty .cover-album, .is-empty .cover-artist, .is-empty .cover-hint, .is-empty .player-ui { display: none; }
