@@ -114,7 +114,7 @@
   }
 
   // Apple TV: what's playing, refreshed every few seconds.
-  const atvDevice = DeskAppleTV.device();
+  const atvDevice = window.DeskAppleTV ? DeskAppleTV.device() : null;
   async function checkAppleTV() {
     if (!atvDevice) return;
     atv = await DeskAppleTV.status(atvDevice.host);
@@ -138,7 +138,7 @@
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };
   const host = url => { try { return new URL(url).host; } catch (e) { return url; } };
   const row = (label, value) => `<div class="info-row"><span>${label}</span><span>${value}</span></div>`;
-  const gb = n => n >= 1e12 ? `${(n / 1e12).toFixed(1)} TB` : `${Math.round(n / 1e9)} GB`;
+  const gb = n => n >= 1e12 ? `${(n / 1e12).toFixed(1)} TB` : n < 1e10 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e9)} GB`;
   const usage = (label, u, hotAt) => `<div class="usage">
       <div class="meter-label"><span>${esc(label)}</span><span>${Math.round(u.percent)}% <em>· ${gb(u.used)} of ${gb(u.total)}</em></span></div>
       <div class="meter"><div class="${u.percent >= hotAt ? 'hot' : ''}" style="width:${u.percent}%"></div></div>
@@ -327,13 +327,16 @@
 
   // ---------- Refresh ----------
   async function checkAll() {
+    const started = Date.now();
     $('srv-refresh').disabled = true;
     $('srv-refresh').textContent = 'Checking…';
     const [results] = await Promise.all([DeskServers.checkAll(), checkTailscale().catch(() => {})]);
     servers = results;
-    $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    $('srv-refresh').disabled = false;
-    $('srv-refresh').textContent = 'Check now';
+    // Keep "Checking…" up long enough to see, then confirm with a tick.
+    await new Promise(r => setTimeout(r, Math.max(0, 600 - (Date.now() - started))));
+    $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    $('srv-refresh').textContent = 'Updated ✓';
+    setTimeout(() => { $('srv-refresh').disabled = false; $('srv-refresh').textContent = 'Check now'; }, 1500);
     renderServers();
   }
 

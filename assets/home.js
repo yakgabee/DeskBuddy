@@ -113,7 +113,7 @@
   let spotifyTrack = null;   // latest from Spotify (null = nothing)
   let spotifyEmpty = null;   // what to show when nothing plays anywhere
   let atvTrack = null;       // latest from the Apple TV (null = nothing)
-  const atvDevice = DeskAppleTV.device();
+  const atvDevice = window.DeskAppleTV ? DeskAppleTV.device() : null;
 
   const sourceLabel = t => DEMO ? 'Demo player'
     : t.source === 'appletv' ? `${t.playing ? 'Now playing' : 'Paused'} on Apple TV${t.app ? ` · ${t.app}` : ''}`
