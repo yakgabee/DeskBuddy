@@ -3,9 +3,12 @@
 # Exit kiosk mode with Alt+F4. The mouse pointer is hidden on the dashboard.
 cd "$(dirname "$0")"
 
+# Use DeskBuddy's own Python environment (.venv, for extras like pyatv) if it exists.
+PY=python3; [ -x .venv/bin/python3 ] && PY=.venv/bin/python3
+
 # Start the DeskBuddy server (skipped if it's already running).
 python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/', timeout=1)" 2>/dev/null \
-  || python3 server.py &
+  || "$PY" server.py &
 
 # Wait up to 30 seconds for it to be ready.
 i=0

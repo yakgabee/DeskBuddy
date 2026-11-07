@@ -31,9 +31,59 @@
     unset: 'Not set up', invalid: 'Check the address', no_server: 'Start with start.sh / kiosk.sh',
   };
   let devices = DeskDevices.list().map(d => ({ ...d, status: d.host ? 'checking' : 'unset' }));
+  let atv = null; // last Apple TV status from /api/appletv
+
+  const ATV_HINT = {
+    not_installed: 'For what\'s playing and remote buttons, install pyatv (see “Apple TV” in the README).',
+    not_paired: 'Pair DeskBuddy with the Apple TV once to see what\'s playing (see “Apple TV” in the README).',
+  };
+  const fmtTime = sec => {
+    sec = Math.max(0, Math.floor(sec || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), ss = String(sec % 60).padStart(2, '0');
+    return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+  };
+
+  function appleTvCard(d) {
+    const s = atv && atv.state === 'ok' ? atv : null;
+    const awake = s && s.power !== 'off';
+    const label = d.status === 'offline' ? 'Offline'
+      : s ? (s.power === 'off' ? 'Asleep' : s.deviceState === 'playing' ? 'Playing' : s.deviceState === 'paused' ? 'Paused' : 'Awake')
+      : DEV_STATUS[d.status] || d.status;
+    const statusClass = d.status === 'offline' ? 'down' : s ? (awake ? 'up' : 'checking') : d.status === 'online' ? 'up' : 'checking';
+    const active = s && DeskAppleTV.isActive(s);
+    const np = active ? `<div class="atv-np">
+        <div class="atv-art">${s.artworkId ? `<img src="${esc(DeskAppleTV.artworkUrl(d.host, s.artworkId))}" alt="">` : icon('tv', 26)}</div>
+        <div class="atv-meta">
+          <div class="atv-title">${esc(s.title || s.app || 'Playing')}</div>
+          <div class="atv-sub">${esc([DeskAppleTV.subtitle(s), s.app].filter(Boolean).join(' · '))}</div>
+          ${s.total ? `<div class="meter"><div style="width:${Math.min(100, (s.position / s.total) * 100)}%"></div></div>
+            <div class="atv-time"><span>${fmtTime(s.position)}</span><span>${fmtTime(s.total)}</span></div>` : ''}
+        </div>
+      </div>
+      <div class="atv-controls">
+        <button class="ctrl" data-atv="previous" aria-label="Previous">${icon('prev', 20)}</button>
+        <button class="ctrl play" data-atv="play_pause" aria-label="Play/Pause">${icon(s.deviceState === 'playing' ? 'pause' : 'play', 22)}</button>
+        <button class="ctrl" data-atv="next" aria-label="Next">${icon('next', 20)}</button>
+      </div>` : s ? `<div class="dev-sub">${awake ? 'Nothing playing' : 'Sleeping'}</div>` : '';
+    const hint = atv && ATV_HINT[atv.state] ? `<p class="server-hint">${ATV_HINT[atv.state]}</p>` : '';
+    const power = s ? `<button class="open-btn atv-power" data-atv="${awake ? 'turn_off' : 'turn_on'}">${icon('power', 14)}${awake ? 'Sleep' : 'Turn on'}</button>` : '';
+    return `<article class="dev card wide atv ${d.status}">
+      <div class="dev-top">
+        <div class="dev-icon">${icon(d.icon || 'tv', 28)}</div>
+        <div class="grow">
+          <div class="dev-name">${esc(d.name)}</div>
+          <span class="status ${statusClass}">${label}</span>
+        </div>
+        ${power}
+      </div>
+      ${np}${hint}
+      <div class="dev-sub"><code>${esc(d.host)}</code>${d.status === 'online' && d.ms != null ? ` · ${d.ms} ms` : ''}</div>
+    </article>`;
+  }
 
   function renderDevices() {
     $('devices').innerHTML = devices.length ? devices.map(d => {
+      if (d.appletv && d.host) return appleTvCard(d);
       const statusClass = d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';
       return `<article class="dev card ${d.status}">
         <div class="dev-icon">${icon(d.icon || 'server', 28)}</div>
@@ -58,9 +108,27 @@
     devices = await DeskDevices.checkAll();
     renderDevices();
   }
+
+  // Apple TV: what's playing, refreshed every few seconds.
+  const atvDevice = DeskAppleTV.device();
+  async function checkAppleTV() {
+    if (!atvDevice) return;
+    atv = await DeskAppleTV.status(atvDevice.host);
+    renderDevices();
+  }
+  $('devices').addEventListener('click', async e => {
+    const b = e.target.closest('[data-atv]');
+    if (!b || !atvDevice) return;
+    b.disabled = true;
+    if (!(await DeskAppleTV.send(atvDevice.host, b.dataset.atv))) $('dev-meta').textContent = 'Couldn\'t reach the Apple TV';
+    setTimeout(checkAppleTV, 600);
+  });
+
   renderDevices();
   checkDevices();
+  checkAppleTV();
   setInterval(checkDevices, 15000);
+  setInterval(checkAppleTV, 4000);
 
   // ---------- Servers ----------
   const STATUS = { up: 'Running', warn: 'Slow', down: 'Not responding', checking: 'Checking…' };

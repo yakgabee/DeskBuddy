@@ -98,8 +98,25 @@
   }
 
   // ---------- Player state ----------
-  // track: { id, title, artist, album, image, bg, fg, duration, position, playing }
+  // track: { source, id, title, artist, album, image, bg, fg, duration, position, playing, noLyrics }
+  // The card shows Spotify while it's playing; otherwise whatever the Apple TV is playing.
   let track = null;
+  let spotifyTrack = null;   // latest from Spotify (null = nothing)
+  let spotifyEmpty = null;   // what to show when nothing plays anywhere
+  let atvTrack = null;       // latest from the Apple TV (null = nothing)
+  const atvDevice = DeskAppleTV.device();
+
+  const sourceLabel = t => DEMO ? 'Demo player'
+    : t.source === 'appletv' ? `${t.playing ? 'Now playing' : 'Paused'} on Apple TV${t.app ? ` · ${t.app}` : ''}`
+    : t.playing ? 'Now playing on Spotify' : 'Paused on Spotify';
+
+  function decide() {
+    const pick = spotifyTrack && spotifyTrack.playing ? spotifyTrack : atvTrack || spotifyTrack;
+    if (pick) return setTrack(pick);
+    track = null;
+    showState(spotifyEmpty || { source: 'Spotify', title: 'Spotify' });
+    $('btn-disconnect').hidden = DEMO || !Spotify.isLoggedIn();
+  }
   let renderedId = null;
   let lyrics = null;      // { synced, lines: [[time|null, text]] }
   let activeLine = -1;
@@ -123,11 +140,13 @@
     np.classList.remove('is-empty');
     $('np-message').hidden = true;
     $('btn-connect').hidden = true;
-    $('np-source').textContent = DEMO ? 'Demo player' : (track.playing ? 'Now playing on Spotify' : 'Paused on Spotify');
+    np.classList.toggle('no-lyrics', !!track.noLyrics);
+    np.classList.toggle('no-progress', !track.duration);
+    $('np-source').textContent = sourceLabel(track);
     $('np-title').textContent = track.title;
     $('np-artist').textContent = track.artist;
     $('np-album').textContent = track.album || '';
-    $('t-dur').textContent = fmt(track.duration);
+    $('t-dur').textContent = track.duration ? fmt(track.duration) : '';
     $('lyrics-title').textContent = track.title;
     $('lyrics-artist').textContent = track.artist;
 
@@ -155,6 +174,7 @@
     const id = track.id;
     lyrics = null;
     activeLine = -1;
+    if (track.noLyrics) return;
     $('lyrics-body').classList.remove('plain');
     $('lyrics-body').innerHTML = '<p class="lyrics-status">Loading lyrics…</p>';
     const result = track.lyrics
@@ -174,7 +194,7 @@
 
   function renderProgress() {
     if (!track) return;
-    $('progress-fill').style.width = `${Math.min(100, (track.position / track.duration) * 100)}%`;
+    $('progress-fill').style.width = track.duration ? `${Math.min(100, (track.position / track.duration) * 100)}%` : '0';
     $('t-cur').textContent = fmt(track.position);
     $('btn-play').innerHTML = icon(track.playing ? 'pause' : 'play', 22);
     $('now-playing').classList.toggle('paused', !track.playing);
@@ -196,7 +216,8 @@
     track = t;
     if (!track) return;
     if (track.id !== renderedId) renderTrack();
-    $('np-source').textContent = DEMO ? 'Demo player' : (track.playing ? 'Now playing on Spotify' : 'Paused on Spotify');
+    $('np-source').textContent = sourceLabel(track);
+    $('btn-disconnect').hidden = DEMO || track.source === 'appletv' || !Spotify.isLoggedIn();
     renderProgress();
   }
 
@@ -208,7 +229,7 @@
     last = now;
     if (DEMO) { MockPlayer.tick(dt); setTrack(demoTrack()); return; }
     if (track && track.playing) {
-      track.position = Math.min(track.duration, track.position + dt);
+      track.position = track.duration ? Math.min(track.duration, track.position + dt) : track.position + dt;
       renderProgress();
     }
   }, 250);
@@ -229,28 +250,33 @@
   async function pollSpotify() {
     if (Date.now() < pauseUntil) return;
     if (!Spotify.isLoggedIn()) {
-      track = null;
+      spotifyTrack = null;
       $('btn-disconnect').hidden = true;
-      return Spotify.onRedirectOrigin()
-        ? showState({ source: 'Spotify', title: 'Connect Spotify', connect: true,
-            message: 'See what\'s playing, control playback and read along with the lyrics.' })
-        : showState({ source: 'Spotify', title: 'Connect Spotify', message: ORIGIN_HELP() });
+      spotifyEmpty = Spotify.onRedirectOrigin()
+        ? { source: 'Spotify', title: 'Connect Spotify', connect: true,
+            message: 'See what\'s playing, control playback and read along with the lyrics.' }
+        : { source: 'Spotify', title: 'Connect Spotify', message: ORIGIN_HELP() };
+      return decide();
     }
-    $('btn-disconnect').hidden = false;
     try {
       const t = await Spotify.nowPlaying();
-      if (!t) {
-        track = null;
-        return showState({ source: 'Spotify', title: 'Nothing playing',
-          message: 'Start something on Spotify and it\'ll show up here.' });
-      }
-      setTrack(t);
+      spotifyTrack = t ? { ...t, source: 'spotify' } : null;
+      spotifyEmpty = { source: 'Spotify', title: 'Nothing playing',
+        message: 'Start something on Spotify or the Apple TV and it\'ll show up here.' };
+      decide();
     } catch (e) {
       if (e.code === 'auth') return pollSpotify();
       if (e.code === 'rate') pauseUntil = Date.now() + e.retryAfter * 1000;
       // Keep showing the last song; just note the connection problem.
-      $('np-source').textContent = 'Can\'t reach Spotify right now';
+      if (track && track.source === 'spotify') $('np-source').textContent = 'Can\'t reach Spotify right now';
     }
+  }
+
+  async function pollAppleTV() {
+    if (!atvDevice || DEMO) return;
+    const s = await DeskAppleTV.status(atvDevice.host);
+    atvTrack = DeskAppleTV.isActive(s) ? DeskAppleTV.toTrack(s, atvDevice.host) : null;
+    decide();
   }
 
   async function control(action) {
@@ -262,6 +288,12 @@
     }
     if (!track) return;
     if (action === 'play' || action === 'pause') { track.playing = action === 'play'; renderProgress(); }
+    if (track.source === 'appletv') {
+      const cmd = action === 'play' || action === 'pause' ? 'play_pause' : action;
+      if (!(await DeskAppleTV.send(atvDevice.host, cmd))) toast('Couldn\'t reach the Apple TV');
+      setTimeout(pollAppleTV, 600);
+      return;
+    }
     try {
       await Spotify[action]();
     } catch (e) {
@@ -278,7 +310,7 @@
 
   // ---------- Lyrics overlay ----------
   function openLyrics() {
-    if (!track) return;
+    if (!track || track.noLyrics) return;
     $('lyrics').classList.add('open');
     activeLine = -1; // force scroll to the current line
     renderProgress();
@@ -298,6 +330,7 @@
       .finally(() => {
         pollSpotify();
         setInterval(pollSpotify, 3000);
+        if (atvDevice) { pollAppleTV(); setInterval(pollAppleTV, 4000); }
       });
   }
 })();

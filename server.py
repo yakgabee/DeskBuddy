@@ -8,6 +8,9 @@ back to) and adds:
   GET /api/torrents   ->  your uTorrent downloads, via uTorrent's Web UI
   GET /api/weather    ->  current weather + today's high/low (OpenWeatherMap)
   GET /api/ping?host= ->  is a device on your home network online?
+  GET /api/appletv?host=          ->  Apple TV: awake/asleep and what's playing
+  GET /api/appletv/artwork?host=  ->  artwork for what's playing
+  POST /api/appletv               ->  {"host", "action"}: play_pause, next, previous, turn_on, turn_off
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -340,6 +343,18 @@ def device_status(host, extra_ports=()):
     return 200, {"host": host, "online": online, "ms": ms if online else None}
 
 
+# ---------- Apple TV (pyatv) ----------
+_appletv = None
+
+
+def appletv():
+    global _appletv
+    if _appletv is None:
+        import appletv as mod  # appletv.py, next to this file
+        _appletv = (mod, mod.AppleTVClient())
+    return _appletv
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
@@ -360,12 +375,15 @@ class Handler(SimpleHTTPRequestHandler):
         return any(p.startswith(".") and p not in (".", "..") for p in parts) or \
             parts[-1].lower() in PRIVATE_FILES
 
-    def do_GET(self):
+    def addressed_to_us(self):
         # Only answer requests addressed to this dashboard. This blocks "DNS
         # rebinding", where a website points its own name at 127.0.0.1 to read
         # local pages.
         host = (self.headers.get("Host") or "").lower()
-        if host not in (f"{HOST}:{PORT}", f"localhost:{PORT}"):
+        return host in (f"{HOST}:{PORT}", f"localhost:{PORT}")
+
+    def do_GET(self):
+        if not self.addressed_to_us():
             return self.send_json(403, {"error": "forbidden"})
         path = self.path.split("?")[0]
         if path == "/api/tailscale":
@@ -374,6 +392,25 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*utorrent.status())
         if path == "/api/weather":
             return self.send_json(*weather.status())
+        if path in ("/api/appletv", "/api/appletv/artwork"):
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            host = q.get("host", [""])[0].strip()
+            if not host or not home_network_host(host):
+                return self.send_json(400, {"error": "not_allowed"})
+            mod, client = appletv()
+            if path == "/api/appletv":
+                return self.send_json(200, client.status(host))
+            art = client.artwork_for(host, q.get("id", [""])[0])
+            if not art:
+                return self.send_json(404, {"error": "no_artwork"})
+            data, mime = art
+            self.send_response(200)
+            self.send_header("Content-Type", mime)
+            self.send_header("Cache-Control", "max-age=3600")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/api/ping":
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             host = q.get("host", [""])[0].strip()
@@ -382,6 +419,27 @@ class Handler(SimpleHTTPRequestHandler):
         if self.is_private():
             return self.send_json(404, {"error": "not_found"})
         super().do_GET()
+
+    def do_POST(self):
+        if not self.addressed_to_us():
+            return self.send_json(403, {"error": "forbidden"})
+        # Only the dashboard's own pages may send commands.
+        origin = self.headers.get("Origin")
+        if origin and origin.lower() not in (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}"):
+            return self.send_json(403, {"error": "forbidden"})
+        if self.path.split("?")[0] != "/api/appletv":
+            return self.send_json(404, {"error": "not_found"})
+        try:
+            length = min(int(self.headers.get("Content-Length") or 0), 10_000)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            return self.send_json(400, {"error": "bad_request"})
+        mod, client = appletv()
+        host, action = (body.get("host"), body.get("action")) if isinstance(body, dict) else (None, None)
+        if not isinstance(host, str) or not home_network_host(host) or action not in mod.COMMANDS:
+            return self.send_json(400, {"error": "bad_request"})
+        result = client.command(host, action)
+        self.send_json(200 if result.get("ok") else 503, result)
 
     def log_message(self, fmt, *args):
         pass  # keep the terminal quiet

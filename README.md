@@ -1,8 +1,9 @@
 # DeskBuddy
 
 A desktop home dashboard: clock and weather, Spotify now-playing with synced
-lyrics, uTorrent downloads, and a Smart Home page with tabs for your devices
-(computer, Apple TV), servers, downloads and Tailscale.
+lyrics (or what's on the Apple TV), uTorrent downloads, and a Smart Home page
+with tabs for your devices (computer, Apple TV with remote), servers, downloads
+and Tailscale.
 
 ## Run it
 
@@ -85,6 +86,37 @@ Smart Home → **Devices** shows whether each device is online. Edit the `device
 list in `assets/config.js`: give each one its IP address on your home network.
 Optionally add a `port` the device always has open for a more reliable check
 (Apple TV: `7000`). Find an Apple TV's IP in **Settings → Network**.
+
+## Apple TV
+
+With [pyatv](https://pyatv.dev), the Apple TV card on Smart Home → **Devices**
+shows whether it's awake or asleep, what's playing (with artwork and progress),
+and has play/pause, skip and Sleep / Turn on buttons. When Spotify isn't playing,
+the home screen's player shows what's on the Apple TV instead.
+
+Set the Apple TV's IP in `assets/config.js` (`appletv: true` on its entry), then on
+the computer running DeskBuddy (e.g. the Pi):
+
+1. **Install pyatv** in DeskBuddy's own Python environment (takes a few minutes on a Pi):
+
+   ```bash
+   cd ~/DeskBuddy && python3 -m venv .venv && .venv/bin/pip install pyatv
+   ```
+
+2. **Pair once.** The Apple TV shows a code on screen (twice: one for remote
+   control, one for AirPlay). Type each code when asked:
+
+   ```bash
+   .venv/bin/python appletv.py pair 10.0.10.118
+   ```
+
+3. **Restart DeskBuddy** (`sudo reboot` on the Pi). `start.sh`, `start.bat` and
+   `kiosk.sh` use `.venv` automatically when it exists.
+
+The pairing is saved in `~/.pyatv.conf`. If pairing fails, check the Apple TV's
+**Settings → AirPlay and HomeKit → Allow Access** is set to *Anyone on the Same
+Network* (or *Everyone*). Some apps don't share what's playing; then the card shows
+the app name or just "Playing".
 
 ## Show a server's RAM and storage
 
