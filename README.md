@@ -111,7 +111,7 @@ the computer running DeskBuddy (e.g. the Pi):
 1. **Install pyatv** in DeskBuddy's own Python environment (takes a few minutes on a Pi):
 
    ```bash
-   cd ~/DeskBuddy && python3 -m venv .venv && .venv/bin/pip install pyatv
+   cd ~/DeskBuddy && python3 -m venv .venv && .venv/bin/pip install pyatv "srptools<2"
    ```
 
 2. **Pair once.** The Apple TV shows a code on screen (twice: one for remote
@@ -123,6 +123,8 @@ the computer running DeskBuddy (e.g. the Pi):
 
 3. **Restart DeskBuddy** (`sudo reboot` on the Pi). `start.sh`, `start.bat` and
    `kiosk.sh` use `.venv` automatically when it exists.
+
+(`srptools<2`: version 2 of that library breaks pyatv's pairing for now.)
 
 The pairing is saved in `~/.pyatv.conf`. If pairing fails, check the Apple TV's
 **Settings → AirPlay and HomeKit → Allow Access** is set to *Anyone on the Same

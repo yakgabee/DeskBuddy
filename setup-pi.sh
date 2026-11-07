@@ -90,13 +90,19 @@ fi
 
 # ---------------------------------------------------------------- 3. Apple TV
 bold "3. Apple TV (what's playing + remote buttons)"
+# srptools 2.x breaks pyatv's pairing ("SRPClientSession.__init__() takes 2
+# positional arguments"), so keep it below 2 until pyatv is updated.
 if [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; then
+  if .venv/bin/python -c "import importlib.metadata as m, sys; sys.exit(int(m.version('srptools').split('.')[0]) < 2)" 2>/dev/null; then
+    warn "Fixing a library version that breaks Apple TV pairing…"
+    .venv/bin/pip install -q --disable-pip-version-check "srptools<2" && ok "Fixed."
+  fi
   ok "pyatv is installed."
 elif yesno "Install pyatv now? (takes a few minutes)"; then
   if ! python3 -m venv .venv 2>/dev/null; then
     warn "Installing python3-venv first…"; sudo apt-get install -y python3-venv && python3 -m venv .venv
   fi
-  if .venv/bin/pip install -q --disable-pip-version-check pyatv; then ok "pyatv installed."
+  if .venv/bin/pip install -q --disable-pip-version-check pyatv "srptools<2"; then ok "pyatv installed."
   else warn "pyatv install failed. Run: .venv/bin/pip install pyatv"; fi
 fi
 if [ -n "$ATV_HOST" ] && [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; then

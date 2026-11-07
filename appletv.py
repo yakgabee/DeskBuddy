@@ -229,12 +229,19 @@ async def pair(host):
                 print('Enter 1234 on the TV if asked, then press Enter here.')
                 await loop.run_in_executor(None, sys.stdin.readline)
             await pairing.finish()
-            if not pairing.has_paired:
-                print(f"{name} pairing failed. Run this again to retry.")
-                return 2
-            print(f"{name} paired.")
+        except Exception as e:  # show a short message instead of a traceback
+            print(f"{name} pairing failed: {e}")
+            if "SRPClientSession" in str(e):
+                print('Fix: .venv/bin/pip install "srptools<2"   then run this again.')
+            else:
+                print("Check the code on the TV and run this again.")
+            return 2
         finally:
             await pairing.close()
+        if not pairing.has_paired:
+            print(f"{name} pairing failed (wrong code?). Run this again to retry.")
+            return 2
+        print(f"{name} paired.")
     await storage.save()
     print("\nDone! Restart DeskBuddy and the Apple TV will show up on the dashboard.")
     return 0
