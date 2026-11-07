@@ -28,6 +28,17 @@ and phones work too.
 
 ### Raspberry Pi
 
+**Quickest:** run the setup script. It updates DeskBuddy, asks for your weather key
+and uTorrent login (saved only on the Pi), installs and pairs the Apple TV support,
+sets up Tailscale, starts DeskBuddy on boot and keeps the screen on. It asks before
+each step and is safe to run again.
+
+```bash
+cd ~/DeskBuddy && ./setup-pi.sh
+```
+
+Or step by step:
+
 ```bash
 git clone -b claude/desktop-home-dashboard-3txbxr https://github.com/yakgabee/DeskBuddy.git ~/DeskBuddy
 cd ~/DeskBuddy
@@ -125,7 +136,14 @@ and storage. It needs only Python 3 and works on Linux and Windows. Run it on ea
 server you want to watch, then add the server to `assets/config.js` with
 `type: 'agent'` (the Local Server at `10.0.10.141` is already there).
 
-**On a Linux server**, install it and keep it running (also after reboots):
+**On a Linux server**, one command installs it as a service that starts on boot
+(and opens port 9091 in `ufw` for your home network if that firewall is on):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yakgabee/DeskBuddy/claude/desktop-home-dashboard-3txbxr/agent/install.sh | sudo bash
+```
+
+Or by hand:
 
 ```bash
 sudo curl -o /opt/deskbuddy-agent.py https://raw.githubusercontent.com/yakgabee/DeskBuddy/claude/desktop-home-dashboard-3txbxr/agent/deskbuddy-agent.py
