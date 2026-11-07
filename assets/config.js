@@ -40,7 +40,7 @@ window.DESKBUDDY_CONFIG = {
   //   (Apple TV: 7000 for AirPlay; Windows PC with uTorrent's Web UI: 8080).
   devices: [
     { id: 'computer', name: 'Computer', icon: 'laptop', host: '10.0.10.132', port: 8080 },
-    { id: 'apple-tv', name: 'Apple TV', icon: 'tv', host: '', port: 7000 }, // ← put your Apple TV's IP here
+    { id: 'apple-tv', name: 'Apple TV', icon: 'tv', host: '10.0.10.118', port: 7000 },
   ],
 
   // Tailscale devices are read from the Tailscale app on this computer
