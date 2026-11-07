@@ -441,6 +441,13 @@ class Handler(SimpleHTTPRequestHandler):
         result = client.command(host, action)
         self.send_json(200 if result.get("ok") else 503, result)
 
+    def end_headers(self):
+        # Always re-check the dashboard's own files, so a `git pull` takes effect
+        # on the next reload instead of mixing old and new files.
+        if not self.path.startswith("/api/"):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def log_message(self, fmt, *args):
         pass  # keep the terminal quiet
 

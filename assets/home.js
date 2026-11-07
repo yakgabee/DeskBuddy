@@ -7,16 +7,22 @@
 
   // ---------- Smart home summary ----------
   let lastAtv = null; // latest Apple TV status (set by pollAppleTV below)
-  const refreshStatus = async () => {
-    const [servers, ts, checked] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status(), DeskDevices.checkAll()]);
-    // The Apple TV counts as online whenever pyatv can talk to it.
-    const devices = checked.map(d => d.appletv && lastAtv && lastAtv.state === 'ok' ? { ...d, status: 'online' } : d);
-    const dv = DeskDevices.summary(devices);
-    $('stat-devices').textContent = dv.total ? `${dv.online}/${dv.total}` : '–';
-    const sv = DeskServers.summary(servers);
-    $('stat-servers').textContent = `${sv.up}/${sv.total}`;
-    const t = DeskTailscale.summary(ts);
-    $('stat-ts').textContent = t ? `${t.online}/${t.total}` : '–';
+  // Each stat fills in on its own, so one failing check can't blank the others.
+  const refreshStatus = () => {
+    DeskServers.checkAll().then(servers => {
+      const sv = DeskServers.summary(servers);
+      $('stat-servers').textContent = `${sv.up}/${sv.total}`;
+    }).catch(() => {});
+    DeskTailscale.status().then(ts => {
+      const t = DeskTailscale.summary(ts);
+      $('stat-ts').textContent = t ? `${t.online}/${t.total}` : '–';
+    }).catch(() => {});
+    DeskDevices.checkAll().then(checked => {
+      // The Apple TV counts as online whenever pyatv can talk to it.
+      const devices = checked.map(d => d.appletv && lastAtv && lastAtv.state === 'ok' ? { ...d, status: 'online' } : d);
+      const dv = DeskDevices.summary(devices);
+      $('stat-devices').textContent = dv.total ? `${dv.online}/${dv.total}` : '–';
+    }).catch(() => {});
   };
   refreshStatus();
   setInterval(refreshStatus, 60000);

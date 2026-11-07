@@ -5,6 +5,13 @@
   const TIMEOUT = 6000;
   const SLOW_MS = 1500;
 
+  // A fetch timeout that also works on older Chromium (no AbortSignal.timeout there).
+  const timeoutSignal = ms => {
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  };
+
   const timed = async fn => {
     const t0 = performance.now();
     await fn();
@@ -13,14 +20,14 @@
 
   // Resolves if the address answers at all (any HTTP response), rejects if unreachable.
   const reachable = url => timed(() =>
-    fetch(url, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) }));
+    fetch(url, { mode: 'no-cors', cache: 'no-store', signal: timeoutSignal(TIMEOUT) }));
 
   async function checkUrl(server, url) {
     const base = url.replace(/\/+$/, '');
     if (server.type === 'agent') {
       let stats;
       const ms = await timed(async () => {
-        const r = await fetch(`${base}/stats`, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) });
+        const r = await fetch(`${base}/stats`, { cache: 'no-store', signal: timeoutSignal(TIMEOUT) });
         if (!r.ok) throw new Error(r.status);
         stats = await r.json();
       });
@@ -30,7 +37,7 @@
       try {
         let info;
         const ms = await timed(async () => {
-          const r = await fetch(`${base}/System/Info/Public`, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT) });
+          const r = await fetch(`${base}/System/Info/Public`, { cache: 'no-store', signal: timeoutSignal(TIMEOUT) });
           if (!r.ok) throw new Error(r.status);
           info = await r.json();
         });
@@ -56,7 +63,7 @@
     list() { return window.DESKBUDDY_CONFIG.servers || []; },
     async checkAll() {
       const list = this.list();
-      const results = await Promise.all(list.map(check));
+      const results = await Promise.all(list.map(s => check(s).catch(() => ({ status: 'down', url: s.url }))));
       return list.map((s, i) => ({ ...s, ...results[i] }));
     },
     summary(list) {

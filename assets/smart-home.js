@@ -329,7 +329,7 @@
   async function checkAll() {
     $('srv-refresh').disabled = true;
     $('srv-refresh').textContent = 'Checking…';
-    const [results] = await Promise.all([DeskServers.checkAll(), checkTailscale()]);
+    const [results] = await Promise.all([DeskServers.checkAll(), checkTailscale().catch(() => {})]);
     servers = results;
     $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     $('srv-refresh').disabled = false;
