@@ -46,10 +46,10 @@
   function appleTvCard(d) {
     const s = atv && atv.state === 'ok' ? atv : null;
     const awake = s && s.power !== 'off';
-    const label = d.status === 'offline' ? 'Offline'
-      : s ? (s.power === 'off' ? 'Asleep' : s.deviceState === 'playing' ? 'Playing' : s.deviceState === 'paused' ? 'Paused' : 'Awake')
+    // pyatv talking to it is the best sign it's there, even if it ignores pings.
+    const label = s ? (s.power === 'off' ? 'Asleep' : s.deviceState === 'playing' ? 'Playing' : s.deviceState === 'paused' ? 'Paused' : 'Awake')
       : DEV_STATUS[d.status] || d.status;
-    const statusClass = d.status === 'offline' ? 'down' : s ? (awake ? 'up' : 'checking') : d.status === 'online' ? 'up' : 'checking';
+    const statusClass = s ? (awake ? 'up' : 'checking') : d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';
     const active = s && DeskAppleTV.isActive(s);
     const np = active ? `<div class="atv-np">
         <div class="atv-art">${s.artworkId ? `<img src="${esc(DeskAppleTV.artworkUrl(d.host, s.artworkId))}" alt="">` : icon('tv', 26)}</div>
@@ -81,7 +81,11 @@
     </article>`;
   }
 
+  // The Apple TV counts as online whenever pyatv can talk to it.
+  const effective = () => devices.map(d => d.appletv && atv && atv.state === 'ok' ? { ...d, status: 'online' } : d);
+
   function renderDevices() {
+    const devices = effective();
     $('devices').innerHTML = devices.length ? devices.map(d => {
       if (d.appletv && d.host) return appleTvCard(d);
       const statusClass = d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';

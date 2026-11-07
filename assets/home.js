@@ -6,8 +6,11 @@
   DeskClock.start({ time: $('time'), date: $('date'), greeting: $('greeting') });
 
   // ---------- Smart home summary ----------
+  let lastAtv = null; // latest Apple TV status (set by pollAppleTV below)
   const refreshStatus = async () => {
-    const [servers, ts, devices] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status(), DeskDevices.checkAll()]);
+    const [servers, ts, checked] = await Promise.all([DeskServers.checkAll(), DeskTailscale.status(), DeskDevices.checkAll()]);
+    // The Apple TV counts as online whenever pyatv can talk to it.
+    const devices = checked.map(d => d.appletv && lastAtv && lastAtv.state === 'ok' ? { ...d, status: 'online' } : d);
     const dv = DeskDevices.summary(devices);
     $('stat-devices').textContent = dv.total ? `${dv.online}/${dv.total}` : '–';
     const sv = DeskServers.summary(servers);
@@ -275,6 +278,9 @@
   async function pollAppleTV() {
     if (!atvDevice || DEMO) return;
     const s = await DeskAppleTV.status(atvDevice.host);
+    const wasOk = lastAtv && lastAtv.state === 'ok';
+    lastAtv = s;
+    if ((s.state === 'ok') !== wasOk) refreshStatus(); // update the Devices count right away
     atvTrack = DeskAppleTV.isActive(s) ? DeskAppleTV.toTrack(s, atvDevice.host) : null;
     decide();
   }
