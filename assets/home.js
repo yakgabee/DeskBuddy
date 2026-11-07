@@ -28,20 +28,33 @@
   setInterval(refreshStatus, 60000);
 
   // ---------- Weather ----------
+  // When weather can't load, say why instead of hiding it.
+  const WEATHER_PROBLEMS = {
+    not_set_up: ['Weather not set up', 'Add your key with setup-pi.sh'],
+    bad_key: ['Weather key not active yet', 'New keys can take up to 2 hours'],
+    no_location: ['Can\'t find your location', 'Set your city with setup-pi.sh'],
+    not_found: ['City not found', 'Check the city in setup-pi.sh'],
+    unreachable: ['Weather unavailable', 'Trying again soon'],
+  };
+  let hadWeather = false;
   const refreshWeather = async () => {
     const w = await DeskWeather.get();
-    if (w.error === 'bad_key') {
-      // New OpenWeatherMap keys can take a couple of hours to start working.
+    if (w.error) {
+      if (w.error === 'no_server') return;                   // dashboard started without server.py
+      if (w.error === 'unreachable' && hadWeather) return;    // keep the last reading on a blip
+      const [cond, hint] = WEATHER_PROBLEMS[w.error] || WEATHER_PROBLEMS.unreachable;
       $('weather').hidden = false;
+      $('weather').classList.add('wx-problem');
       $('wx-icon').innerHTML = icon('cloud', 30);
       $('wx-temp').textContent = '–';
-      $('wx-cond').textContent = 'Weather key not active yet';
-      $('wx-range').textContent = '';
+      $('wx-cond').textContent = cond;
+      $('wx-range').textContent = hint;
       return;
     }
-    if (w.error) { if (w.error !== 'unreachable') $('weather').hidden = true; return; } // keep last reading on a blip
+    hadWeather = true;
     const unit = w.units === 'imperial' ? '°F' : '°C';
     $('weather').hidden = false;
+    $('weather').classList.remove('wx-problem');
     $('wx-icon').innerHTML = icon(DeskWeather.icon(w.icon), 30);
     $('wx-temp').textContent = `${w.temp}°`;
     $('wx-cond').textContent = w.description ? w.description[0].toUpperCase() + w.description.slice(1) : w.condition;

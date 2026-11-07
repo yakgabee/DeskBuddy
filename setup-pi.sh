@@ -42,9 +42,13 @@ if [ $write_settings = 1 ]; then
 import json
 s = json.load(open("local-settings.json"))
 w, u = s.get("weather") or {}, s.get("utorrent") or {}
-for v in (w.get("apiKey", ""), u.get("url", ""), u.get("username", ""), u.get("password", "")): print(v)' 2>/dev/null)
+for v in (w.get("apiKey", ""), u.get("url", ""), u.get("username", ""), u.get("password", ""), w.get("city", "")): print(v)' 2>/dev/null)
   WX_KEY=$(ask "OpenWeatherMap API key (type 'none' to turn weather off)" "${OLD[0]:-}")
   [ "$WX_KEY" = none ] && WX_KEY=""
+  WX_CITY=""
+  if [ -n "$WX_KEY" ]; then
+    WX_CITY=$(ask "City for the weather, e.g. Austin,US (leave empty to detect it automatically)" "${OLD[4]:-}")
+  fi
   UT_URL=$(ask "uTorrent Web UI address (type 'none' to turn downloads off)" "${OLD[1]:-http://10.0.10.132:8080}")
   [ "$UT_URL" = none ] && UT_URL=""
   UT_USER=""; UT_PASS=""
@@ -57,11 +61,13 @@ for v in (w.get("apiKey", ""), u.get("url", ""), u.get("username", ""), u.get("p
       read -r -s -p "  uTorrent Web UI password: " UT_PASS; echo
     fi
   fi
-  WX_KEY="$WX_KEY" UT_URL="$UT_URL" UT_USER="$UT_USER" UT_PASS="$UT_PASS" python3 - <<'PY'
+  WX_KEY="$WX_KEY" WX_CITY="$WX_CITY" UT_URL="$UT_URL" UT_USER="$UT_USER" UT_PASS="$UT_PASS" python3 - <<'PY'
 import json, os
 s = {}
 if os.environ["WX_KEY"]:
     s["weather"] = {"apiKey": os.environ["WX_KEY"]}
+    if os.environ["WX_CITY"]:
+        s["weather"]["city"] = os.environ["WX_CITY"]
 if os.environ["UT_URL"]:
     s["utorrent"] = {"url": os.environ["UT_URL"], "username": os.environ["UT_USER"], "password": os.environ["UT_PASS"]}
 with open("local-settings.json", "w") as f:
@@ -135,6 +141,17 @@ fi
 
 # ---------------------------------------------------------------- Checks
 bold "Quick checks"
+WX=$(python3 -c 'import json; print((json.load(open("local-settings.json")).get("weather") or {}).get("apiKey", ""))' 2>/dev/null)
+if [ -n "$WX" ]; then
+  code=$(curl -s -o /dev/null -w '%{http_code}' -m 8 "https://api.openweathermap.org/data/2.5/weather?lat=0&lon=0&appid=$WX")
+  case $code in
+    200) ok "Weather key works." ;;
+    401) warn "OpenWeatherMap doesn't accept the weather key yet. New keys can take up to 2 hours; also check it's typed right." ;;
+    *)   warn "Couldn't reach OpenWeatherMap (code $code)." ;;
+  esac
+else
+  warn "No weather key saved, so the weather won't show. Run ./setup-pi.sh again and enter it."
+fi
 if [ -n "$AGENT_URL" ]; then
   if curl -s -m 4 "$AGENT_URL/stats" | grep -q '"ram"'; then ok "Local Server helper answers ($AGENT_URL)."
   else warn "Local Server helper isn't answering at $AGENT_URL. On that server, run: sudo bash install.sh (in DeskBuddy/agent)"; fi

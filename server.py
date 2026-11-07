@@ -227,12 +227,33 @@ utorrent = UTorrent()
 # ---------- Weather (OpenWeatherMap) ----------
 OWM_BASE = os.environ.get("DESKBUDDY_OWM_URL", "https://api.openweathermap.org")
 GEO_URL = os.environ.get("DESKBUDDY_GEO_URL", "http://ip-api.com/json/?fields=status,city,lat,lon,countryCode")
+GEO_BACKUP_URL = os.environ.get("DESKBUDDY_GEO_BACKUP_URL", "https://ipinfo.io/json")
 WEATHER_TTL = 600  # seconds; keeps API use tiny
 
 
 def fetch_json(url, timeout=6):
     with urllib.request.urlopen(url, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+class NoLocation(Exception):
+    pass
+
+
+def find_location():
+    """Approximate location from this network's public IP (two services, in case one is down)."""
+    try:
+        geo = fetch_json(GEO_URL)
+        if geo.get("status") == "success":
+            return {"lat": geo["lat"], "lon": geo["lon"], "countryCode": geo.get("countryCode")}
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        pass
+    try:
+        geo = fetch_json(GEO_BACKUP_URL)
+        lat, lon = (float(x) for x in geo["loc"].split(","))
+        return {"lat": lat, "lon": lon, "countryCode": geo.get("country")}
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        raise NoLocation()
 
 
 class Weather:
@@ -247,10 +268,7 @@ class Weather:
         if cfg.get("city"):
             return {"q": cfg["city"]}, cfg.get("units")
         if not self.location:
-            geo = fetch_json(GEO_URL)
-            if geo.get("status") != "success":
-                raise ValueError("location lookup failed")
-            self.location = geo
+            self.location = find_location()
         units = cfg.get("units") or ("imperial" if self.location.get("countryCode") in ("US", "LR", "MM") else "metric")
         return {"lat": self.location["lat"], "lon": self.location["lon"]}, units
 
@@ -267,6 +285,16 @@ class Weather:
                 q = urllib.parse.urlencode({**where, "appid": cfg["apiKey"], "units": units or "metric"})
                 now = fetch_json(f"{OWM_BASE}/data/2.5/weather?{q}")
                 fc = fetch_json(f"{OWM_BASE}/data/2.5/forecast?{q}&cnt=8")
+            except NoLocation:
+                # Say "key not active" rather than "no location" when the key is the real problem.
+                try:
+                    fetch_json(f"{OWM_BASE}/data/2.5/weather?" + urllib.parse.urlencode({"lat": 0, "lon": 0, "appid": cfg["apiKey"]}))
+                except urllib.error.HTTPError as e:
+                    if e.code == 401:
+                        return 503, {"error": "bad_key"}
+                except (urllib.error.URLError, OSError, ValueError):
+                    pass
+                return 503, {"error": "no_location"}
             except urllib.error.HTTPError as e:
                 return 503, {"error": "bad_key" if e.code == 401 else "not_found" if e.code == 404 else "unreachable"}
             except (urllib.error.URLError, OSError, ValueError, KeyError):

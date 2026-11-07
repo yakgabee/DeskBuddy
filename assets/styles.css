@@ -83,6 +83,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .wx-icon { color: var(--amber); }
 .wx-temp { font-size: clamp(32px, 4vw, 52px); font-weight: 600; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .wx-cond { font-size: 15px; font-weight: 500; }
+.wx-problem .wx-icon { color: var(--subtle); }
+.wx-problem .wx-cond { color: var(--muted); }
 .wx-range { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .greeting { font-size: 15px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
 .clock-time {
