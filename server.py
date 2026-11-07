@@ -446,7 +446,29 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*device_status(host, ports))
         if self.is_private():
             return self.send_json(404, {"error": "not_found"})
+        local = self.translate_path(self.path)
+        if os.path.isdir(local):
+            local = os.path.join(local, "index.html")
+        if local.endswith(".html") and os.path.isfile(local):
+            return self.send_page(local)
         super().do_GET()
+
+    def send_page(self, local):
+        """Serve a page with a version stamp on each of its files (assets/x.js?v=…),
+        so the browser always loads the current ones after an update."""
+        def stamp(m):
+            path = os.path.join(ROOT, m.group(2))
+            if not os.path.isfile(path):
+                return m.group(0)
+            return f'{m.group(1)}{m.group(2)}?v={int(os.path.getmtime(path))}{m.group(3)}'
+        with open(local, encoding="utf-8") as f:
+            html = re.sub(r'((?:src|href)=")(assets/[^"?#]+)(")', stamp, f.read())
+        raw = html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
 
     def do_POST(self):
         if not self.addressed_to_us():

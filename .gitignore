@@ -1,3 +1,4 @@
 local-settings.json
 __pycache__/
 .venv/
+.cache/

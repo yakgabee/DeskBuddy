@@ -46,7 +46,8 @@ cd ~/DeskBuddy
 ```
 
 `kiosk.sh` starts DeskBuddy and opens it full-screen in Chromium, with the mouse
-pointer hidden. Press `Alt+F4` to exit. (To show the pointer again on that screen,
+pointer hidden. Running it again restarts everything, so after a `git pull` just
+run `./kiosk.sh` (or reboot) to see the update. Press `Alt+F4` to exit. (To show the pointer again on that screen,
 open `http://127.0.0.1:9090/?kiosk=0`.)
 
 **Start it automatically when the Pi boots** (Raspberry Pi OS Bookworm):
