@@ -37,12 +37,25 @@ if [ -f local-settings.json ]; then
   yesno "Keep it as it is?" && write_settings=0
 fi
 if [ $write_settings = 1 ]; then
-  WX_KEY=$(ask "OpenWeatherMap API key (leave empty to skip weather)")
-  UT_URL=$(ask "uTorrent Web UI address (leave empty to skip downloads)" "http://10.0.10.132:8080")
+  # Current values (if any) are offered as defaults, so pressing Enter keeps them.
+  OLD=(); [ -f local-settings.json ] && mapfile -t OLD < <(python3 -c '
+import json
+s = json.load(open("local-settings.json"))
+w, u = s.get("weather") or {}, s.get("utorrent") or {}
+for v in (w.get("apiKey", ""), u.get("url", ""), u.get("username", ""), u.get("password", "")): print(v)' 2>/dev/null)
+  WX_KEY=$(ask "OpenWeatherMap API key (type 'none' to turn weather off)" "${OLD[0]:-}")
+  [ "$WX_KEY" = none ] && WX_KEY=""
+  UT_URL=$(ask "uTorrent Web UI address (type 'none' to turn downloads off)" "${OLD[1]:-http://10.0.10.132:8080}")
+  [ "$UT_URL" = none ] && UT_URL=""
   UT_USER=""; UT_PASS=""
   if [ -n "$UT_URL" ]; then
-    UT_USER=$(ask "uTorrent Web UI username" "gabe")
-    read -r -s -p "  uTorrent Web UI password: " UT_PASS; echo
+    UT_USER=$(ask "uTorrent Web UI username" "${OLD[2]:-gabe}")
+    if [ -n "${OLD[3]:-}" ]; then
+      read -r -s -p "  uTorrent Web UI password (press Enter to keep the current one): " UT_PASS; echo
+      UT_PASS=${UT_PASS:-${OLD[3]}}
+    else
+      read -r -s -p "  uTorrent Web UI password: " UT_PASS; echo
+    fi
   fi
   WX_KEY="$WX_KEY" UT_URL="$UT_URL" UT_USER="$UT_USER" UT_PASS="$UT_PASS" python3 - <<'PY'
 import json, os
