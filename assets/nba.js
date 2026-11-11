@@ -7,7 +7,7 @@
   let error = null;
   let timer = null;
 
-  const tipoff = s => new Date(s).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const tipoff = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });   // e.g. 7:30 PM
   const hasFav = g => favorite && (g.home?.abbr === favorite || g.away?.abbr === favorite);
 
   function team(t, g) {
