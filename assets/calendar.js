@@ -14,7 +14,7 @@
 
   const at = s => new Date(s);                       // "2026-11-12T09:00" = local time
   const dayKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  const time = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const time = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   function dayName(d) {
     const today = new Date(), tomorrow = new Date(Date.now() + 864e5);
     const date = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });

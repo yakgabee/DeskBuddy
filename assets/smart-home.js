@@ -338,7 +338,7 @@
     servers = results;
     // Keep "Checking…" up long enough to see, then confirm with a tick.
     await new Promise(r => setTimeout(r, Math.max(0, 600 - (Date.now() - started))));
-    $('srv-checked').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    $('srv-checked').textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
     $('srv-refresh').textContent = 'Updated ✓';
     setTimeout(() => { $('srv-refresh').disabled = false; $('srv-refresh').textContent = 'Check now'; }, 1500);
     renderServers();

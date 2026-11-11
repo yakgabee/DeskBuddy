@@ -1,5 +1,6 @@
 // Spotify search: a full-screen search with an on-screen keyboard (the Pi has no keyboard).
-// Tap a song, album, artist or playlist to play it; "+" adds a song to your queue.
+// Tap a song or artist to play it; open a playlist or album to see its songs.
+// "+" adds a song to your queue.
 (() => {
   const $ = id => document.getElementById(id);
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -7,6 +8,8 @@
   const SECTIONS = [['tracks', 'Songs'], ['artists', 'Artists'], ['albums', 'Albums'], ['playlists', 'Playlists']];
   const input = $('search-input');
   let results = null;
+  let mine = null;          // your playlists (null = not loaded yet)
+  let detail = null;        // the playlist/album being looked at: { item, songs, total, error }
   let kind = 'all';
   let seq = 0;
   let debounce;
@@ -54,28 +57,29 @@
   // ---------- Searching ----------
   function onInput() {
     $('search-clear').hidden = !input.value;
+    if (detail) { detail = null; render(); }
     clearTimeout(debounce);
     debounce = setTimeout(run, 350);
   }
 
   async function run() {
     const q = input.value.trim();
-    const mine = ++seq;
-    if (!q) { results = null; return render(); }
+    const ticket = ++seq;
+    if (!q) { results = null; loadMine(); return render(); }
     if (Date.now() < pausedUntil) return;
     $('search-results').classList.add('loading');
     try {
       const r = await Spotify.search(q);
-      if (mine !== seq) return;           // a newer search already started
+      if (ticket !== seq) return;         // a newer search already started
       results = r;
       render();
     } catch (e) {
-      if (mine !== seq) return;
+      if (ticket !== seq) return;
       if (e.code === 'rate') pausedUntil = Date.now() + e.retryAfter * 1000;
       $('search-results').innerHTML = `<p class="search-msg">${e.code === 'auth' ? 'Connect Spotify first.'
         : e.code === 'rate' ? 'Spotify asked us to slow down. Try again in a moment.' : 'Couldn\'t reach Spotify.'}</p>`;
     } finally {
-      if (mine === seq) $('search-results').classList.remove('loading');
+      if (ticket === seq) $('search-results').classList.remove('loading');
     }
   }
 
@@ -86,17 +90,31 @@
       <span class="sr-art ${item.kind === 'artist' ? 'round' : ''}">${art}</span>
       <span class="sr-text"><b>${esc(item.title)}${item.explicit ? '<i class="sr-e">E</i>' : ''}</b><small>${esc(item.sub)}</small></span>
       ${item.kind === 'track' ? `<span class="sr-time">${time(item.duration)}</span>
-        <button class="sr-queue" data-queue aria-label="Add to queue">${icon('plus', 18)}</button>` : ''}
+        <button class="sr-queue" data-queue aria-label="Add to queue">${icon('plus', 18)}</button>`
+        : item.kind === 'playlist' || item.kind === 'album' ? `<span class="sr-more">${icon('chevronRight', 20)}</span>` : ''}
     </div>`;
+  }
+
+  async function loadMine() {
+    if (mine || !Spotify.canReadPlaylists()) return;
+    try { mine = await Spotify.myPlaylists(); } catch (e) { return; }
+    if (!results && !detail && !$('search').hidden) render();
   }
 
   function render() {
     const box = $('search-results');
+    $('search-tabs').hidden = !!detail || !results;
+    if (detail) return renderDetail();
     if (!results) {
       const list = recent.get();
-      box.innerHTML = list.length
-        ? `<div class="sr-head">Recent searches</div><div class="sr-recent">${list.map(q => `<button class="chip" data-recent="${esc(q)}">${esc(q)}</button>`).join('')}</div>`
-        : '<p class="search-msg">Search for a song, artist, album or playlist.</p>';
+      const playlists = !Spotify.canReadPlaylists()
+        ? `<div class="sr-head">Your playlists</div><p class="search-msg">Reconnect Spotify once to see your playlists here.
+            <button class="chip" data-reconnect>Reconnect Spotify</button></p>`
+        : mine && mine.length ? `<section class="sr-section"><div class="sr-head">Your playlists</div>
+            <div class="sr-list">${mine.map((it, i) => row(it, i, 'mine')).join('')}</div></section>` : '';
+      box.innerHTML = (list.length
+        ? `<div><div class="sr-head">Recent searches</div><div class="sr-recent">${list.map(q => `<button class="chip" data-recent="${esc(q)}">${esc(q)}</button>`).join('')}</div></div>`
+        : '<p class="search-msg">Search for a song, artist, album or playlist.</p>') + playlists;
       return;
     }
     const sections = SECTIONS.filter(([k]) => (kind === 'all' || kind === k) && results[k].length);
@@ -110,11 +128,54 @@
     box.scrollTop = 0;
   }
 
-  async function play(item) {
-    recent.add(input.value.trim());
+  // ---------- A playlist or album's songs ----------
+  async function openDetail(item) {
+    detail = { item, songs: [], total: 0, loading: true };
+    showKeyboard(false);
+    render();
+    await loadMore();
+  }
+
+  async function loadMore() {
+    const d = detail;
+    d.loading = true;
     try {
-      await Spotify.playItem(item);
-      toast(`Playing ${item.title}`);
+      const page = await Spotify.songs(d.item, d.songs.length);
+      d.songs.push(...page.songs);
+      d.total = page.total;
+    } catch (e) {
+      d.error = e.code;
+    }
+    d.loading = false;
+    if (detail === d) render();
+  }
+
+  function renderDetail() {
+    const { item, songs, total, error, loading } = detail;
+    const art = item.image ? `<img src="${esc(item.image)}" alt="">` : icon('music', 30);
+    const count = total ? `${total} song${total === 1 ? '' : 's'}` : '';
+    const body = error === 'forbidden'
+      ? '<p class="search-msg">Spotify only shows the songs in playlists you made or collaborate on. You can still play it.</p>'
+      : error ? '<p class="search-msg">Couldn\'t load the songs. Try again in a moment.</p>'
+      : songs.length ? `<div class="sr-list single">${songs.map((t, i) => row(t, i, 'detail')).join('')}</div>
+          ${songs.length < total ? `<button class="chip sr-load" data-more ${loading ? 'disabled' : ''}>${loading ? 'Loading…' : 'Show more'}</button>` : ''}`
+      : loading ? '<p class="search-msg">Loading songs…</p>' : '<p class="search-msg">No songs.</p>';
+    $('search-results').innerHTML = `
+      <button class="sr-back" data-back>${icon('arrowLeft', 18)}Back</button>
+      <div class="sr-detail-head">
+        <span class="sr-art big">${art}</span>
+        <span class="sr-text"><small>${item.kind === 'album' ? 'Album' : 'Playlist'}</small><b>${esc(item.title)}</b>
+          <small>${esc([item.kind === 'album' ? item.sub : '', count].filter(Boolean).join(' · '))}</small></span>
+        <button class="sr-play" data-playall>${icon('play', 18)}Play</button>
+      </div>
+      ${body}`;
+  }
+
+  async function play(item, startAt = null) {
+    if (input.value.trim()) recent.add(input.value.trim());
+    try {
+      await Spotify.playItem(item, startAt);
+      toast(`Playing ${startAt ? detail?.songs.find(t => t.uri === startAt)?.title || item.title : item.title}`);
       close();
       window.dispatchEvent(new Event('deskbuddy:spotify-refresh'));
     } catch (e) {
@@ -125,7 +186,7 @@
   }
 
   async function addToQueue(item, btn) {
-    recent.add(input.value.trim());
+    if (input.value.trim()) recent.add(input.value.trim());
     try {
       await Spotify.queue(item.uri);
       btn.innerHTML = icon('check', 18);
@@ -141,11 +202,18 @@
   $('search-results').addEventListener('click', e => {
     const recentBtn = e.target.closest('[data-recent]');
     if (recentBtn) { input.value = recentBtn.dataset.recent; $('search-clear').hidden = false; return run(); }
+    if (e.target.closest('[data-reconnect]')) return Spotify.login();
+    if (e.target.closest('[data-back]')) { detail = null; return render(); }
+    if (e.target.closest('[data-playall]')) return play(detail.item);
+    if (e.target.closest('[data-more]')) { e.target.closest('[data-more]').disabled = true; return loadMore(); }
     const r = e.target.closest('.sr-row');
     if (!r) return;
-    const item = results[r.dataset.section][Number(r.dataset.i)];
+    const s = r.dataset.section, i = Number(r.dataset.i);
+    const item = s === 'mine' ? mine[i] : s === 'detail' ? detail.songs[i] : results[s][i];
     const q = e.target.closest('[data-queue]');
     if (q) { if (!q.classList.contains('done')) addToQueue(item, q); return; }
+    if (s === 'detail') return play(detail.item, item.uri);   // play the playlist from this song
+    if (item.kind === 'playlist' || item.kind === 'album') return openDetail(item);
     play(item);
   });
   // Scrolling the results tucks the keyboard away to show more of them.
@@ -156,6 +224,7 @@
     const chip = e.target.closest('.chip');
     if (!chip) return;
     kind = chip.dataset.kind;
+    detail = null;
     document.querySelectorAll('#search-tabs .chip').forEach(c => c.classList.toggle('active', c === chip));
     render();
   });
@@ -169,7 +238,9 @@
   function open() {
     $('search').hidden = false;
     showKeyboard(true);
+    detail = null;
     render();
+    loadMine();
     input.focus();
   }
   function close() {

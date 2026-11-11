@@ -1,7 +1,7 @@
 // Spotify Web API client (Authorization Code + PKCE, no client secret).
 (() => {
   const cfg = window.DESKBUDDY_CONFIG.spotify;
-  const SCOPES = 'user-read-currently-playing user-read-playback-state user-modify-playback-state';
+  const SCOPES = 'user-read-currently-playing user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
   const KEY = 'deskbuddy.spotify';
   const API = 'https://api.spotify.com/v1';
 
@@ -37,6 +37,7 @@
       accessToken: t.access_token,
       refreshToken: t.refresh_token || prev.refreshToken,
       expiresAt: Date.now() + (t.expires_in - 60) * 1000,
+      scope: t.scope || prev.scope || '',
     };
     store.set(saved);
     return saved;
@@ -77,6 +78,7 @@
     }
     if (res.status === 403 && method !== 'GET') throw fail('Playback controls need Spotify Premium', 'premium');
     if (res.status === 404 && method !== 'GET') throw fail('No active Spotify device', 'no_device');
+    if (res.status === 403 || res.status === 404) throw fail('Spotify won\'t share that', 'forbidden');
     if (res.status === 204 || res.status === 202) return null;
     if (!res.ok) throw fail(`Spotify error ${res.status}`, 'network');
     const text = await res.text();
@@ -89,6 +91,8 @@
       return location.origin === new URL(cfg.redirectUri).origin;
     },
     isLoggedIn() { return !!store.get(); },
+    // Logins from before playlists were added don't include them: reconnect once.
+    canReadPlaylists() { return (store.get()?.scope || '').includes('playlist-read-private'); },
 
     async login() {
       const verifier = randomString(64);
@@ -163,10 +167,38 @@
       };
     },
 
+    async myPlaylists() {
+      const d = await api('/me/playlists?limit=30');
+      return (d?.items || []).filter(Boolean).map(p => {
+        const n = p.items?.total ?? p.tracks?.total;
+        return { kind: 'playlist', uri: p.uri, title: p.name, image: (p.images || []).slice(-2)[0]?.url || p.images?.[0]?.url || null,
+          sub: n != null ? `${n} song${n === 1 ? '' : 's'}` : 'Playlist' };
+      });
+    },
+
+    // Songs in a playlist (yours or one you collaborate on) or an album, 50 at a time.
+    async songs(item, offset = 0) {
+      const id = item.uri.split(':').pop();
+      const toSong = (t, image) => t && t.uri && {
+        kind: 'track', uri: t.uri, title: t.name, duration: (t.duration_ms || 0) / 1000, explicit: t.explicit,
+        sub: (t.artists || []).map(a => a.name).join(', ') || t.show?.name || '',
+        image: image || (t.album?.images || []).slice(-1)[0]?.url || null,
+      };
+      if (item.kind === 'album') {
+        const a = await api(`/albums/${id}/tracks?limit=50&offset=${offset}`);
+        return { songs: (a?.items || []).map(t => toSong(t, item.image)).filter(Boolean), total: a?.total || 0 };
+      }
+      const d = await api(`/playlists/${id}/items?limit=50&offset=${offset}`);
+      // Each entry holds the song as "item" (or "track" on older responses).
+      return { songs: (d?.items || []).map(x => toSong(x?.item || x?.track)).filter(Boolean), total: d?.total || 0 };
+    },
+
+
     // Play a search result. With nothing playing anywhere, start it on the
     // first Spotify device that's online (your PC, phone, a speaker…).
-    async playItem(item) {
+    async playItem(item, startAt = null) {
       const body = item.kind === 'track' ? { uris: [item.uri] } : { context_uri: item.uri };
+      if (startAt) body.offset = { uri: startAt };   // start a playlist/album at this song
       try {
         return await api('/me/player/play', 'PUT', false, body);
       } catch (e) {

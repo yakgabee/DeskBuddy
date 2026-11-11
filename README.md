@@ -258,6 +258,11 @@ Tap a song, album, artist or playlist to play it, or **+** to add a song to your
 If nothing is playing anywhere, it starts on the first Spotify device that's online
 (your PC, phone, a speaker). Playing and queueing need Spotify Premium.
 
+Open a playlist or album to see its songs and start it from any song. **Your playlists**
+show when the search box is empty. Spotify only lets apps list the songs in playlists you
+made or collaborate on; other playlists can still be played. (If you connected Spotify before
+this was added, tap **Reconnect Spotify** in search once.)
+
 - In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), the app's
   Redirect URI must be exactly `http://127.0.0.1:9090/`.
 - While the app is in Development mode, only accounts added under **User Management**
