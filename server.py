@@ -14,6 +14,8 @@ back to) and adds:
   GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
   POST /api/power     ->  {"action": "reboot" | "shutdown"} for the power button
   GET /api/nba        ->  today's and yesterday's NBA games (ESPN's public scoreboard)
+  GET /api/lights     ->  your Alexa lights (via Voice Monkey) and what was last sent
+  POST /api/lights    ->  {"light": 0, "action": "on" | "off" | "scene0"…}
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -473,6 +475,109 @@ class NBAScores:
 nba = NBAScores()
 
 
+# ---------- Lights: Alexa routines triggered through Voice Monkey ----------
+# Voice Monkey (voicemonkey.io) is an Alexa skill: each "trigger device" you make there
+# can start an Alexa routine, and the routine turns your light on, off, dims it, etc.
+# Settings in local-settings.json:
+#   "voicemonkey": {"token": "…",
+#                   "lights": [{"name": "Bedroom Light", "on": "bedroom-on", "off": "bedroom-off",
+#                               "scenes": [{"label": "Dim", "device": "bedroom-dim"}]}]}
+VOICEMONKEY_URL = os.environ.get("DESKBUDDY_VOICEMONKEY_URL", "https://api-v3.voicemonkey.io/trigger")
+LIGHT_STATE = os.path.join(ROOT, ".cache", "lights.json")
+
+
+def voicemonkey_trigger(token, device):
+    """Start the Alexa routine linked to a Voice Monkey trigger device. Returns None or an error code."""
+    def done(r):
+        try:
+            body = json.loads(r.read() or b"{}")
+        except ValueError:
+            body = {}
+        return "rejected" if isinstance(body, dict) and body.get("success") is False else None
+
+    payload = json.dumps({"token": token, "device": device}).encode()
+    req = urllib.request.Request(VOICEMONKEY_URL, data=payload, method="POST",
+                                 headers={"Content-Type": "application/json", "User-Agent": "DeskBuddy"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return done(r)
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return "bad_token"
+        if e.code not in (400, 404, 405):
+            return "unreachable"
+    except (urllib.error.URLError, OSError):
+        return "unreachable"
+    # The POST wasn't accepted: try the simple GET form of the same call.
+    url = f"{VOICEMONKEY_URL}?{urllib.parse.urlencode({'token': token, 'device': device})}"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "DeskBuddy"}), timeout=10) as r:
+            return done(r)
+    except urllib.error.HTTPError as e:
+        return "bad_token" if e.code in (401, 403) else "unknown_device" if e.code in (400, 404) else "unreachable"
+    except (urllib.error.URLError, OSError):
+        return "unreachable"
+
+
+class Lights:
+    def __init__(self):
+        self.lock = threading.Lock()
+        try:
+            with open(LIGHT_STATE, encoding="utf-8") as f:
+                self.last = json.load(f)
+        except (OSError, ValueError):
+            self.last = {}
+
+    @staticmethod
+    def config():
+        vm = local_settings().get("voicemonkey") or {}
+        lights = [l for l in vm.get("lights") or [] if isinstance(l, dict) and l.get("name")]
+        return (vm.get("token") or "").strip(), lights
+
+    @staticmethod
+    def actions(light):
+        out = [(a, a.title(), light[a]) for a in ("on", "off") if isinstance(light.get(a), str) and light[a].strip()]
+        for i, sc in enumerate(light.get("scenes") or []):
+            if isinstance(sc, dict) and sc.get("device") and sc.get("label"):
+                out.append((f"scene{i}", str(sc["label"]), sc["device"]))
+        return out
+
+    def status(self):
+        token, lights = self.config()
+        if not token or not lights:
+            return {"error": "not_set_up"}
+        with self.lock:
+            return {"lights": [{
+                "name": l["name"],
+                "actions": [{"id": a, "label": label} for a, label, _ in self.actions(l)],
+                "last": self.last.get(l["name"]),          # what DeskBuddy last sent: {"action", "at"}
+            } for l in lights]}
+
+    def send(self, index, action):
+        token, lights = self.config()
+        if not token or type(index) is not int or not 0 <= index < len(lights):
+            return 400, {"error": "bad_request"}
+        light = lights[index]
+        device = next((d for a, _, d in self.actions(light) if a == action), None)
+        if not device:
+            return 400, {"error": "bad_request"}
+        err = voicemonkey_trigger(token, device.strip())
+        if err:
+            return 502, {"error": err}
+        with self.lock:
+            self.last[light["name"]] = {"action": action, "at": int(time.time())}
+            try:
+                os.makedirs(os.path.dirname(LIGHT_STATE), exist_ok=True)
+                with open(LIGHT_STATE, "w", encoding="utf-8") as f:
+                    json.dump(self.last, f)
+            except OSError:
+                pass
+        return 200, {"ok": True}
+
+
+lights = Lights()
+
+
 # ---------- Power button: restart / shut down this computer ----------
 POWER_DRY_RUN = os.environ.get("DESKBUDDY_POWER_DRYRUN") == "1"   # for testing
 
@@ -545,6 +650,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*utorrent.status())
         if path == "/api/weather":
             return self.send_json(*weather.status())
+        if path == "/api/lights":
+            return self.send_json(200, lights.status())
         if path == "/api/nba":
             return self.send_json(*nba.status())
         if path == "/api/calendar":
@@ -608,13 +715,17 @@ class Handler(SimpleHTTPRequestHandler):
         if origin and origin.lower() not in (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}"):
             return self.send_json(403, {"error": "forbidden"})
         path = self.path.split("?")[0]
-        if path not in ("/api/appletv", "/api/power"):
+        if path not in ("/api/appletv", "/api/power", "/api/lights"):
             return self.send_json(404, {"error": "not_found"})
         try:
             length = min(int(self.headers.get("Content-Length") or 0), 10_000)
             body = json.loads(self.rfile.read(length) or b"{}")
         except (ValueError, json.JSONDecodeError):
             return self.send_json(400, {"error": "bad_request"})
+        if path == "/api/lights":
+            if not isinstance(body, dict):
+                return self.send_json(400, {"error": "bad_request"})
+            return self.send_json(*lights.send(body.get("light"), body.get("action")))
         if path == "/api/power":
             action = body.get("action") if isinstance(body, dict) else None
             if action not in ("reboot", "shutdown"):

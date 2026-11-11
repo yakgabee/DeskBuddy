@@ -141,8 +141,56 @@ except Exception as e: print("error")' 2>/dev/null)
   esac
 fi
 
-# ---------------------------------------------------------------- 4. Apple TV
-bold "4. Apple TV (what's playing + remote buttons)"
+# ---------------------------------------------------------------- 4. Lights
+bold "4. Lights through Alexa (Voice Monkey)"
+VM_TOKEN=$(setting voicemonkey.token)
+VM_COUNT=$(python3 -c 'import json; print(len((json.load(open("local-settings.json")).get("voicemonkey") or {}).get("lights") or []))' 2>/dev/null || echo 0)
+if { [ -z "$VM_TOKEN" ] && noyes "Add Alexa lights to DeskBuddy with Voice Monkey?"; } || \
+   { [ -n "$VM_TOKEN" ] && noyes "$VM_COUNT light(s) set up. Change them?"; }; then
+  echo "  You need: the Voice Monkey skill enabled in Alexa, a trigger device for each action"
+  echo "  (e.g. bedroom-on, bedroom-off) and an Alexa routine for each one. See 'Lights' in the README."
+  read -r -s -p "  Voice Monkey API token${VM_TOKEN:+ (press Enter to keep the current one)}: " NEW_TOKEN; echo
+  VM_TOKEN=${NEW_TOKEN:-$VM_TOKEN}
+  LIGHTS_JSON="[]"
+  while true; do
+    NAME=$(ask "Light name as shown on the dashboard (empty to finish)" "")
+    [ -z "$NAME" ] && break
+    ON=$(ask "  Voice Monkey device that turns it ON" "")
+    OFF=$(ask "  Voice Monkey device that turns it OFF" "")
+    SCENES="[]"
+    while true; do
+      LABEL=$(ask "  Extra button label, e.g. Dim (empty for none)" "")
+      [ -z "$LABEL" ] && break
+      DEV=$(ask "  Voice Monkey device for '$LABEL'" "")
+      SCENES=$(L="$SCENES" A="$LABEL" D="$DEV" python3 -c 'import json,os
+l = json.loads(os.environ["L"]); l.append({"label": os.environ["A"], "device": os.environ["D"]}); print(json.dumps(l))')
+    done
+    LIGHTS_JSON=$(L="$LIGHTS_JSON" N="$NAME" ON="$ON" OFF="$OFF" S="$SCENES" python3 -c 'import json,os
+l = json.loads(os.environ["L"]); e = os.environ
+l.append({"name": e["N"], "on": e["ON"], "off": e["OFF"], **({"scenes": json.loads(e["S"])} if json.loads(e["S"]) else {})})
+print(json.dumps(l))')
+  done
+  if [ "$LIGHTS_JSON" = "[]" ] && [ "$VM_COUNT" != 0 ]; then
+    LIGHTS_JSON=$(python3 -c 'import json; print(json.dumps(json.load(open("local-settings.json"))["voicemonkey"]["lights"]))')
+  fi
+  T="$VM_TOKEN" L="$LIGHTS_JSON" python3 -c 'import json,os
+print(json.dumps({"token": os.environ["T"], "lights": json.loads(os.environ["L"])}) if os.environ["T"] else "")' | save_section voicemonkey
+  FIRST=$(python3 -c 'import json; print(json.load(open("local-settings.json"))["voicemonkey"]["lights"][0]["name"])' 2>/dev/null)
+  if [ -n "$VM_TOKEN" ] && [ -n "$FIRST" ] && yesno "Test now by turning '$FIRST' on?"; then
+    result=$(python3 -c 'import json, server
+vm = json.load(open("local-settings.json"))["voicemonkey"]
+print(server.voicemonkey_trigger(vm["token"], vm["lights"][0]["on"]) or "ok")' 2>/dev/null)
+    case $result in
+      ok)             ok "Sent! '$FIRST' should turn on in a second or two." ;;
+      bad_token)      warn "Voice Monkey didn't accept that token." ;;
+      unknown_device) warn "Voice Monkey doesn't know that device name. Check it in the Voice Monkey app." ;;
+      *)              warn "Couldn't reach Voice Monkey ($result). Check the Pi's internet connection." ;;
+    esac
+  fi
+fi
+
+# ---------------------------------------------------------------- 5. Apple TV
+bold "5. Apple TV (what's playing + remote buttons)"
 # srptools 2.x breaks pyatv's pairing ("SRPClientSession.__init__() takes 2
 # positional arguments"), so keep it below 2 until pyatv is updated.
 if [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; then
@@ -162,8 +210,8 @@ if [ -n "$ATV_HOST" ] && [ -x .venv/bin/python ] && .venv/bin/python -c "import 
   fi
 fi
 
-# ---------------------------------------------------------------- 5. Tailscale
-bold "5. Tailscale (for the Tailscale tab)"
+# ---------------------------------------------------------------- 6. Tailscale
+bold "6. Tailscale (for the Tailscale tab)"
 if command -v tailscale >/dev/null; then
   if tailscale status >/dev/null 2>&1; then ok "Tailscale is installed and signed in."
   elif yesno "Sign this Pi in to Tailscale now?"; then sudo tailscale up; fi
@@ -171,8 +219,8 @@ elif yesno "Install Tailscale on this Pi?"; then
   curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 fi
 
-# ---------------------------------------------------------------- 6. Autostart
-bold "6. Start DeskBuddy automatically when the Pi turns on"
+# ---------------------------------------------------------------- 7. Autostart
+bold "7. Start DeskBuddy automatically when the Pi turns on"
 LINE="$DIR/kiosk.sh &"
 added=0
 mkdir -p "$HOME/.config/labwc"
@@ -187,8 +235,8 @@ if [ -d "$HOME/.config/lxsession/LXDE-pi" ] && ! grep -qF "$DIR/kiosk.sh" "$HOME
 fi
 [ $added = 1 ] && ok "Added." || ok "Already set up."
 
-# ---------------------------------------------------------------- 7. Screen on
-bold "7. Keep the screen on (no blanking)"
+# ---------------------------------------------------------------- 8. Screen on
+bold "8. Keep the screen on (no blanking)"
 if command -v raspi-config >/dev/null; then
   if sudo raspi-config nonint do_blanking 1; then ok "Screen blanking turned off."
   else warn "Couldn't change it. Use: sudo raspi-config → Display Options → Screen Blanking → No"; fi

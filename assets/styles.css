@@ -503,3 +503,14 @@ html, * { scrollbar-width: none; }
 .sr-play { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px; background: var(--spotify); color: #000; font-size: 15px; font-weight: 700; flex-shrink: 0; }
 .sr-load { align-self: center; }
 .search-msg .chip { margin-left: 8px; }
+
+/* ---------- Lights (Voice Monkey) ---------- */
+.lights:empty { display: none; }
+.lights { margin-top: 6px; }
+.dev.light { gap: 14px; }
+.dev.light.lit .dev-icon { background: rgba(255, 214, 10, 0.18); color: #FFD60A; }
+.light-btns { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.light-btn { flex: 1; min-width: 64px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: #48484a; color: var(--text); font-size: 15px; font-weight: 600; }
+.light-btn.on { background: #fff; color: #000; }
+.light-btn:disabled { opacity: 0.6; }
+.dev.light.lit .light-btn.on { background: #FFD60A; }

@@ -109,6 +109,24 @@ nothing to set up. They refresh every 30 seconds while a game is on and every 5 
 Your team's games are listed first with a white outline. Change it with `nba.favorite`
 in `assets/config.js` (e.g. `'LAL'`, `'GS'`, `'BOS'`).
 
+## Lights (Alexa, through Voice Monkey)
+
+Alexa has no official way for other apps to switch your lights, so DeskBuddy uses
+[Voice Monkey](https://voicemonkey.io), an Alexa skill. Each button on the dashboard
+starts an Alexa routine, and the routine controls the light.
+
+1. In the Alexa app, enable the **Voice Monkey** skill and link your account.
+2. In Voice Monkey, create a trigger device for each button, e.g. `bedroom-on` and
+   `bedroom-off` (and `bedroom-dim` if you want a Dim button).
+3. In the Alexa app, make a routine for each: **When this happens → Smart Home →** the
+   Voice Monkey device (e.g. `bedroom-on`) **→ Add action → Smart Home →** your light → On.
+4. Copy your API token from your Voice Monkey account, then run `./setup-pi.sh`
+   (step 4) and enter the token and device names.
+
+The light shows up in the **Devices** tab with On/Off buttons (plus any extra buttons you
+added). Alexa doesn't tell Voice Monkey whether the light is on, so the card shows what
+DeskBuddy last sent. The token is saved only in `local-settings.json` on the Pi.
+
 ## Weather
 
 The clock card shows the current weather and today's high/low from

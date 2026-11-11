@@ -13,5 +13,21 @@
       "username": "you@icloud.com",
       "appPassword": "abcd-efgh-ijkl-mnop"
     }
+  },
+  "voicemonkey": {
+    "token": "your-voice-monkey-api-token",
+    "lights": [
+      {
+        "name": "Bedroom Light",
+        "on": "bedroom-light-on",
+        "off": "bedroom-light-off",
+        "scenes": [
+          {
+            "label": "Dim",
+            "device": "bedroom-light-dim"
+          }
+        ]
+      }
+    ]
   }
 }
