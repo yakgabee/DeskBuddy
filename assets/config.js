@@ -3,6 +3,9 @@ window.DESKBUDDY_CONFIG = {
   // Big clock on the home screen: 12 (e.g. 9:41) or 24 (e.g. 21:41).
   clock: { hours: 12 },
 
+  // NBA tab: your team's games go first and get a white outline (team abbreviation, e.g. 'TOR').
+  nba: { favorite: 'TOR' },
+
   spotify: {
     // Public Client ID from https://developer.spotify.com/dashboard.
     // The Client Secret is NOT needed (and must never be put here): DeskBuddy

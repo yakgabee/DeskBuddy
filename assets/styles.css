@@ -122,6 +122,22 @@ html, * { scrollbar-width: none; }
 .ev-title { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev-sub { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev.now .ev-time b { color: var(--green); }
+
+/* NBA */
+.nba-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.nba-game { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.nba-game.fav { border-color: rgba(255, 255, 255, 0.5); }
+.nba-status { font-family: var(--mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.nba-game.in .nba-status { color: #FF453A; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #FF453A; animation: nba-pulse 1.6s ease-in-out infinite; }
+@keyframes nba-pulse { 50% { opacity: 0.3; } }
+.nba-team { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; }
+.nba-logo { width: 30px; height: 30px; display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.nba-logo img { width: 30px; height: 30px; object-fit: contain; }
+.nba-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nba-name small { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 7px; font-family: var(--mono); }
+.nba-score { font-family: var(--mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.nba-team.lost { opacity: 0.55; }
 .day-card { padding: 4px 0; }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); background: #fff; color: #000; padding: 10px 16px;

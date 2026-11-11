@@ -101,6 +101,14 @@ The Calendar tab shows the next two weeks, and the Clock tab shows what's next.
 It's saved in `local-settings.json` on the Pi only. Calendar links (`webcal://…`)
 work too: add them as `"urls": [...]` inside `"calendar"`.
 
+## NBA scores
+
+The **NBA** tab shows today's games (live scores with the game clock, finals and tip-off
+times) and yesterday's results. The scores come from ESPN's public scoreboard, so there's
+nothing to set up. They refresh every 30 seconds while a game is on and every 5 minutes otherwise.
+Your team's games are listed first with a white outline. Change it with `nba.favorite`
+in `assets/config.js` (e.g. `'LAL'`, `'GS'`, `'BOS'`).
+
 ## Weather
 
 The clock card shows the current weather and today's high/low from

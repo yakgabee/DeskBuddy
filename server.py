@@ -13,6 +13,7 @@ back to) and adds:
   POST /api/appletv               ->  {"host", "action"}: play_pause, next, previous, turn_on, turn_off
   GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
   POST /api/power     ->  {"action": "reboot" | "shutdown"} for the power button
+  GET /api/nba        ->  today's and yesterday's NBA games (ESPN's public scoreboard)
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -410,6 +411,68 @@ class CalendarCache:
 calendar_cache = CalendarCache()
 
 
+# ---------- NBA scores (ESPN's public scoreboard, no key needed) ----------
+NBA_URL = os.environ.get("DESKBUDDY_NBA_URL", "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard")
+
+
+def nba_team(c):
+    team = c.get("team") or {}
+    records = c.get("records") or []
+    return {
+        "abbr": team.get("abbreviation", ""), "name": team.get("shortDisplayName") or team.get("displayName", ""),
+        "logo": team.get("logo"), "color": team.get("color"),
+        "score": c.get("score"), "winner": bool(c.get("winner")),
+        "record": records[0].get("summary") if records else None,
+    }
+
+
+def nba_games(data):
+    out = []
+    for ev in data.get("events") or []:
+        try:
+            comp = (ev.get("competitions") or [{}])[0]
+            sides = {c.get("homeAway"): nba_team(c) for c in comp.get("competitors") or []}
+            st = (ev.get("status") or {}).get("type") or {}
+            out.append({
+                "id": ev.get("id"), "start": ev.get("date"),
+                "state": st.get("state", "pre"),                # pre / in / post
+                "detail": st.get("shortDetail") or st.get("detail") or "",
+                "home": sides.get("home"), "away": sides.get("away"),
+            })
+        except (AttributeError, IndexError, TypeError):
+            continue
+    return out
+
+
+class NBAScores:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.cache = None  # (time, ttl, body)
+
+    def status(self):
+        with self.lock:
+            if self.cache and time.time() - self.cache[0] < self.cache[1]:
+                return 200, self.cache[2]
+            today = time.localtime()
+            yesterday = time.localtime(time.time() - 86400)
+            try:
+                days = []
+                for label, day in (("Today", today), ("Yesterday", yesterday)):
+                    data = fetch_json(f"{NBA_URL}?dates={time.strftime('%Y%m%d', day)}", timeout=8)
+                    days.append({"label": label, "date": time.strftime("%Y-%m-%d", day), "games": nba_games(data)})
+            except (urllib.error.URLError, OSError, ValueError):
+                if self.cache:
+                    return 200, dict(self.cache[2], stale=True)   # keep the last scores on a blip
+                return 503, {"error": "unreachable"}
+            live = any(g["state"] == "in" for d in days for g in d["games"])
+            body = {"days": days, "updated": int(time.time())}
+            self.cache = (time.time(), 30 if live else 300, body)   # quick refresh while games are on
+            return 200, body
+
+
+nba = NBAScores()
+
+
 # ---------- Power button: restart / shut down this computer ----------
 POWER_DRY_RUN = os.environ.get("DESKBUDDY_POWER_DRYRUN") == "1"   # for testing
 
@@ -482,6 +545,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*utorrent.status())
         if path == "/api/weather":
             return self.send_json(*weather.status())
+        if path == "/api/nba":
+            return self.send_json(*nba.status())
         if path == "/api/calendar":
             return self.send_json(*calendar_cache.status(force="refresh" in self.path))
 

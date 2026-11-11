@@ -10,7 +10,7 @@
   };
 
   // ---------- Tabs ----------
-  const TABS = ['clock', 'spotify', 'devices', 'servers', 'downloads', 'tailscale', 'calendar'];
+  const TABS = ['clock', 'spotify', 'devices', 'servers', 'downloads', 'tailscale', 'calendar', 'nba'];
   let currentTab = null;
   function showTab(name) {
     if (!TABS.includes(name)) name = 'clock';

@@ -17,6 +17,8 @@
       const dot = (x, y, on) => `<circle cx="${x}" cy="${y}" r="2.1" fill="#fff" opacity="${on ? 1 : 0.3}"/>`;
       return tile('#242424', [dot(6.5, 6.5), dot(12, 6.5), dot(17.5, 6.5), dot(6.5, 12, 1), dot(12, 12, 1), dot(17.5, 12, 1), dot(6.5, 17.5), dot(12, 17.5, 1), dot(17.5, 17.5)].join(''));
     },
+    nba: () => tile('#EE6730', `<circle cx="12" cy="12" r="7" fill="none" stroke="#000" stroke-width="1.3"/>
+      <path d="M5 12h14M12 5v14M7.1 7a7.5 7.5 0 0 1 0 10M16.9 7a7.5 7.5 0 0 0 0 10" fill="none" stroke="#000" stroke-width="1.3"/>`),
     calendar: () => {
       const now = new Date();
       return `<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#fff"/>
