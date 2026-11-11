@@ -10,11 +10,25 @@ Then GET http://<this-computer>:9091/stats returns, e.g.:
     {"hostname": "server", "ram": {"total": ..., "used": ..., "percent": 41.2},
      "disks": [{"mount": "/", "total": ..., "used": ..., "percent": 63.0}]}
 
-It is read-only (it only reports numbers) and needs nothing but Python 3.
-Works on Linux and Windows.
+It is read-only and needs nothing but Python 3. Works on Linux and Windows.
+
+On a Windows PC with Wallpaper Engine it also shares the current wallpaper, so the
+dashboard can use it as its background:
+
+    GET /wallpaper/info     ->  {"id", "title", "type": "video" | "image", "ext", "size"}
+    GET /wallpaper/file     ->  the video (video wallpapers) or the preview image
+    GET /wallpaper/preview  ->  the wallpaper's preview image
+
+Scene and web wallpapers can't play on a Raspberry Pi, so their preview image is used.
+If Wallpaper Engine isn't found automatically, set DESKBUDDY_WE_DIR to its folder
+(the one containing config.json).
 """
+import glob
+import hashlib
 import json
+import mimetypes
 import os
+import re
 import platform
 import shutil
 import socket
@@ -115,9 +129,150 @@ def stats():
     return {"hostname": socket.gethostname(), "os": platform.system(), "ram": ram, "disks": disks}
 
 
+# ---------------------------------------------------------------- Wallpaper Engine
+VIDEO_EXTS = {".mp4", ".webm", ".mov", ".m4v"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def steam_libraries():
+    """Steam library folders on this computer."""
+    roots = []
+    if sys.platform.startswith("win"):
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as k:
+                roots.append(winreg.QueryValueEx(k, "SteamPath")[0])
+        except OSError:
+            pass
+        roots += [r"C:\Program Files (x86)\Steam", r"C:\Program Files\Steam"]
+    else:
+        roots += [os.path.expanduser("~/.steam/steam"), os.path.expanduser("~/.local/share/Steam")]
+    libs = []
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        libs.append(root)
+        vdf = os.path.join(root, "steamapps", "libraryfolders.vdf")
+        try:
+            with open(vdf, encoding="utf-8", errors="replace") as f:
+                libs += [p.replace("\\\\", "\\") for p in re.findall(r'"path"\s+"([^"]+)"', f.read())]
+        except OSError:
+            pass
+    seen, out = set(), []
+    for lib in libs:
+        key = os.path.normcase(os.path.normpath(lib))
+        if key not in seen and os.path.isdir(lib):
+            seen.add(key)
+            out.append(lib)
+    return out
+
+
+def wallpaper_engine_dirs():
+    env = os.environ.get("DESKBUDDY_WE_DIR")
+    if env:
+        return [env]
+    return [d for d in (os.path.join(lib, "steamapps", "common", "wallpaper_engine") for lib in steam_libraries())
+            if os.path.isfile(os.path.join(d, "config.json"))]
+
+
+def selected_files(obj, found):
+    """Every 'file' under a 'selectedwallpapers' block in Wallpaper Engine's config.json."""
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key == "selectedwallpapers" and isinstance(value, dict):
+                for monitor in value.values():
+                    if isinstance(monitor, dict) and isinstance(monitor.get("file"), str):
+                        found.append(monitor["file"])
+            else:
+                selected_files(value, found)
+    elif isinstance(obj, list):
+        for value in obj:
+            selected_files(value, found)
+    return found
+
+
+def current_wallpaper():
+    """The wallpaper on the first monitor (or DESKBUDDY_WE_MONITOR), or None."""
+    for we in wallpaper_engine_dirs():
+        try:
+            with open(os.path.join(we, "config.json"), encoding="utf-8") as f:
+                files = selected_files(json.load(f), [])
+        except (OSError, ValueError):
+            continue
+        if not files:
+            continue
+        index = min(int(os.environ.get("DESKBUDDY_WE_MONITOR", "0")), len(files) - 1)
+        folder = os.path.dirname(os.path.normpath(files[index]))
+        project = {}
+        try:
+            with open(os.path.join(folder, "project.json"), encoding="utf-8") as f:
+                project = json.load(f)
+        except (OSError, ValueError):
+            pass
+        kind = str(project.get("type", "")).lower()
+        main = os.path.join(folder, project.get("file") or os.path.basename(files[index]))
+        preview = os.path.join(folder, project["preview"]) if project.get("preview") else None
+        if not preview or not os.path.isfile(preview):
+            previews = glob.glob(os.path.join(folder, "preview.*"))
+            preview = previews[0] if previews else None
+        if (kind == "video" or os.path.splitext(main)[1].lower() in VIDEO_EXTS) and os.path.isfile(main):
+            path, wtype = main, "video"
+        elif os.path.splitext(main)[1].lower() in IMAGE_EXTS and os.path.isfile(main):
+            path, wtype = main, "image"
+        elif preview:
+            path, wtype = preview, "image"   # scene / web wallpapers: use the preview
+        else:
+            continue
+        st = os.stat(path)
+        return {
+            "id": hashlib.sha1(f"{path}|{st.st_size}|{int(st.st_mtime)}".encode()).hexdigest()[:16],
+            "title": project.get("title") or os.path.basename(folder),
+            "type": wtype, "ext": os.path.splitext(path)[1].lower(), "size": st.st_size,
+            "path": path, "preview": preview,
+        }
+    return None
+
+
 class Handler(BaseHTTPRequestHandler):
+    def send_file(self, path):
+        try:
+            size = os.path.getsize(path)
+            f = open(path, "rb")
+        except OSError:
+            self.send_response(404)
+            self.end_headers()
+            return
+        with f:
+            self.send_response(200)
+            self.send_header("Content-Type", mimetypes.guess_type(path)[0] or "application/octet-stream")
+            self.send_header("Content-Length", str(size))
+            self.end_headers()
+            shutil.copyfileobj(f, self.wfile, 1024 * 1024)
+
     def do_GET(self):
-        if self.path.split("?")[0] != "/stats":
+        path = self.path.split("?")[0]
+        if path.startswith("/wallpaper/"):
+            wp = current_wallpaper()
+            if not wp:
+                self.send_response(404)
+                self.end_headers()
+                return
+            if path == "/wallpaper/info":
+                body = json.dumps({k: v for k, v in wp.items() if k not in ("path", "preview")} | {"hasPreview": bool(wp["preview"])}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if path == "/wallpaper/file":
+                return self.send_file(wp["path"])
+            if path == "/wallpaper/preview" and wp["preview"]:
+                return self.send_file(wp["preview"])
+            self.send_response(404)
+            self.end_headers()
+            return
+        if path != "/stats":
             self.send_response(404)
             self.end_headers()
             return

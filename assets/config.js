@@ -1,5 +1,8 @@
 // DeskBuddy settings — edit this file to change what the dashboard connects to.
 window.DESKBUDDY_CONFIG = {
+  // Big clock on the home screen: 12 (e.g. 9:41) or 24 (e.g. 21:41).
+  clock: { hours: 12 },
+
   spotify: {
     // Public Client ID from https://developer.spotify.com/dashboard.
     // The Client Secret is NOT needed (and must never be put here): DeskBuddy

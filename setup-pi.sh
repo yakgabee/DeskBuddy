@@ -13,6 +13,31 @@ ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$*"; }
 ask()  { local a; read -r -p "  $1${2:+ [$2]}: " a; echo "${a:-${2:-}}"; }
 yesno() { local a; read -r -p "  $1 [Y/n]: " a; [[ ! ${a:-} =~ ^[Nn] ]]; }
+noyes() { local a; read -r -p "  $1 [y/N]: " a; [[ ${a:-} =~ ^[Yy] ]]; }
+
+# Read a value from local-settings.json, e.g. setting wallpaper.agent
+setting() { python3 -c 'import json,sys
+v = json.load(open("local-settings.json"))
+for k in sys.argv[1].split("."): v = v.get(k) if isinstance(v, dict) else None
+print(v if isinstance(v, str) else "")' "$1" 2>/dev/null; }
+
+# Update one section of local-settings.json (JSON from stdin; empty removes it), keeping the rest.
+save_section() { SECTION="$1" python3 -c 'import json,os,sys
+p = "local-settings.json"
+try: s = json.load(open(p))
+except Exception: s = {}
+raw = sys.stdin.read().strip()
+if raw: s[os.environ["SECTION"]] = json.loads(raw)
+else: s.pop(os.environ["SECTION"], None)
+json.dump(s, open(p, "w"), indent=2)'; chmod 600 local-settings.json; }
+
+# DeskBuddy's own Python environment, for the extras (Apple TV, calendar).
+ensure_venv() {
+  [ -x .venv/bin/python ] && return 0
+  if ! python3 -m venv .venv 2>/dev/null; then
+    warn "Installing python3-venv first…"; sudo apt-get install -y python3-venv && python3 -m venv .venv
+  fi
+}
 
 # Values from assets/config.js
 ATV_HOST=$(grep -E "appletv: *true" assets/config.js | grep -oE "host: *'[^']+'" | grep -oE "[0-9.]+[0-9]" | head -1)
@@ -61,19 +86,12 @@ for v in (w.get("apiKey", ""), u.get("url", ""), u.get("username", ""), u.get("p
       read -r -s -p "  uTorrent Web UI password: " UT_PASS; echo
     fi
   fi
-  WX_KEY="$WX_KEY" WX_CITY="$WX_CITY" UT_URL="$UT_URL" UT_USER="$UT_USER" UT_PASS="$UT_PASS" python3 - <<'PY'
-import json, os
-s = {}
-if os.environ["WX_KEY"]:
-    s["weather"] = {"apiKey": os.environ["WX_KEY"]}
-    if os.environ["WX_CITY"]:
-        s["weather"]["city"] = os.environ["WX_CITY"]
-if os.environ["UT_URL"]:
-    s["utorrent"] = {"url": os.environ["UT_URL"], "username": os.environ["UT_USER"], "password": os.environ["UT_PASS"]}
-with open("local-settings.json", "w") as f:
-    json.dump(s, f, indent=2)
-PY
-  chmod 600 local-settings.json
+  WX_KEY="$WX_KEY" WX_CITY="$WX_CITY" python3 -c 'import json,os
+k, c = os.environ["WX_KEY"], os.environ["WX_CITY"]
+print(json.dumps({"apiKey": k, **({"city": c} if c else {})}) if k else "")' | save_section weather
+  UT_URL="$UT_URL" UT_USER="$UT_USER" UT_PASS="$UT_PASS" python3 -c 'import json,os
+u = os.environ["UT_URL"]
+print(json.dumps({"url": u, "username": os.environ["UT_USER"], "password": os.environ["UT_PASS"]}) if u else "")' | save_section utorrent
   ok "Saved local-settings.json"
 fi
 if [ -f local-settings.json ] && grep -q '"utorrent"' local-settings.json; then
@@ -88,8 +106,63 @@ if [ -f local-settings.json ] && grep -q '"utorrent"' local-settings.json; then
   esac
 fi
 
-# ---------------------------------------------------------------- 3. Apple TV
-bold "3. Apple TV (what's playing + remote buttons)"
+# ---------------------------------------------------------------- 3. Wallpaper
+bold "3. Wallpaper (your Wallpaper Engine wallpaper, from your PC)"
+WP=$(setting wallpaper.agent)
+if [ -z "$WP" ] || noyes "Wallpaper comes from $WP. Change it?"; then
+  WP=$(ask "Address of the DeskBuddy helper on your PC (type 'none' to skip)" "${WP:-http://10.0.10.132:9091}")
+  [ "$WP" = none ] && WP=""
+  WP="$WP" python3 -c 'import json,os; a=os.environ["WP"].rstrip("/"); print(json.dumps({"agent": a}) if a else "")' | save_section wallpaper
+fi
+if [ -n "$WP" ]; then
+  info=$(curl -s -m 5 -w '\n%{http_code}' "$WP/wallpaper/info")
+  case ${info##*$'\n'} in
+    200) ok "Found your wallpaper: $(echo "${info%$'\n'*}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("title","?"))')" ;;
+    404) warn "The PC helper answers, but no Wallpaper Engine wallpaper was found. Is Wallpaper Engine running?" ;;
+    *)   warn "Can't reach the PC helper at $WP. On your PC, run agent\\install-windows.bat (see README)." ;;
+  esac
+  if ! command -v ffmpeg >/dev/null && yesno "Install ffmpeg? (shrinks video wallpapers so they play smoothly)"; then
+    sudo apt-get install -y ffmpeg >/dev/null && ok "ffmpeg installed."
+  fi
+fi
+
+# ---------------------------------------------------------------- 4. Calendar
+bold "4. Calendar (iCloud)"
+ICLOUD_USER=$(setting calendar.icloud.username)
+if [ -z "$ICLOUD_USER" ] || noyes "Calendar is connected to $ICLOUD_USER. Change it?"; then
+  echo "  iCloud needs an app-specific password: appleid.apple.com → Sign-In and Security →"
+  echo "  App-Specific Passwords → +. (Your normal Apple ID password won't work.)"
+  ICLOUD_USER=$(ask "Apple ID email (type 'none' to skip the calendar)" "$ICLOUD_USER")
+  [ "$ICLOUD_USER" = none ] && ICLOUD_USER=""
+  if [ -n "$ICLOUD_USER" ]; then
+    OLD_PW=$(setting calendar.icloud.appPassword)
+    read -r -s -p "  App-specific password${OLD_PW:+ (press Enter to keep the current one)}: " ICLOUD_PW; echo
+    ICLOUD_PW=${ICLOUD_PW:-$OLD_PW}
+    CALS=$(ask "Only these calendars, comma-separated (leave empty for all)" "")
+  fi
+  ICLOUD_USER="$ICLOUD_USER" ICLOUD_PW="${ICLOUD_PW:-}" CALS="${CALS:-}" python3 -c 'import json,os
+u = os.environ["ICLOUD_USER"]
+inc = [c.strip() for c in os.environ["CALS"].split(",") if c.strip()]
+print(json.dumps({"icloud": {"username": u, "appPassword": os.environ["ICLOUD_PW"]}, **({"include": inc} if inc else {})}) if u else "")' | save_section calendar
+fi
+if [ -n "$ICLOUD_USER" ]; then
+  if ! { [ -x .venv/bin/python ] && .venv/bin/python -c "import icalendar, recurring_ical_events" 2>/dev/null; }; then
+    ensure_venv && .venv/bin/pip install -q --disable-pip-version-check icalendar recurring_ical_events && ok "Calendar support installed."
+  fi
+  result=$(.venv/bin/python -c '
+import json, calendar_sync as c
+try: print("ok", len(c.upcoming(json.load(open("local-settings.json"))["calendar"])))
+except c.AuthFailed: print("auth")
+except Exception as e: print("error")' 2>/dev/null)
+  case $result in
+    ok*)  ok "Calendar connected (${result#ok } upcoming events)." ;;
+    auth) warn "iCloud didn't accept that Apple ID / app-specific password." ;;
+    *)    warn "Couldn't read the calendar right now. Check the Pi's internet connection." ;;
+  esac
+fi
+
+# ---------------------------------------------------------------- 5. Apple TV
+bold "5. Apple TV (what's playing + remote buttons)"
 # srptools 2.x breaks pyatv's pairing ("SRPClientSession.__init__() takes 2
 # positional arguments"), so keep it below 2 until pyatv is updated.
 if [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; then
@@ -99,9 +172,7 @@ if [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; th
   fi
   ok "pyatv is installed."
 elif yesno "Install pyatv now? (takes a few minutes)"; then
-  if ! python3 -m venv .venv 2>/dev/null; then
-    warn "Installing python3-venv first…"; sudo apt-get install -y python3-venv && python3 -m venv .venv
-  fi
+  ensure_venv
   if .venv/bin/pip install -q --disable-pip-version-check pyatv "srptools<2"; then ok "pyatv installed."
   else warn "pyatv install failed. Run: .venv/bin/pip install pyatv"; fi
 fi
@@ -111,8 +182,8 @@ if [ -n "$ATV_HOST" ] && [ -x .venv/bin/python ] && .venv/bin/python -c "import 
   fi
 fi
 
-# ---------------------------------------------------------------- 4. Tailscale
-bold "4. Tailscale (for the Tailscale tab)"
+# ---------------------------------------------------------------- 6. Tailscale
+bold "6. Tailscale (for the Tailscale tab)"
 if command -v tailscale >/dev/null; then
   if tailscale status >/dev/null 2>&1; then ok "Tailscale is installed and signed in."
   elif yesno "Sign this Pi in to Tailscale now?"; then sudo tailscale up; fi
@@ -120,8 +191,8 @@ elif yesno "Install Tailscale on this Pi?"; then
   curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 fi
 
-# ---------------------------------------------------------------- 5. Autostart
-bold "5. Start DeskBuddy automatically when the Pi turns on"
+# ---------------------------------------------------------------- 7. Autostart
+bold "7. Start DeskBuddy automatically when the Pi turns on"
 LINE="$DIR/kiosk.sh &"
 added=0
 mkdir -p "$HOME/.config/labwc"
@@ -136,8 +207,8 @@ if [ -d "$HOME/.config/lxsession/LXDE-pi" ] && ! grep -qF "$DIR/kiosk.sh" "$HOME
 fi
 [ $added = 1 ] && ok "Added." || ok "Already set up."
 
-# ---------------------------------------------------------------- 6. Screen on
-bold "6. Keep the screen on (no blanking)"
+# ---------------------------------------------------------------- 8. Screen on
+bold "8. Keep the screen on (no blanking)"
 if command -v raspi-config >/dev/null; then
   if sudo raspi-config nonint do_blanking 1; then ok "Screen blanking turned off."
   else warn "Couldn't change it. Use: sudo raspi-config → Display Options → Screen Blanking → No"; fi

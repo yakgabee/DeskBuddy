@@ -11,6 +11,8 @@ back to) and adds:
   GET /api/appletv?host=          ->  Apple TV: awake/asleep and what's playing
   GET /api/appletv/artwork?host=  ->  artwork for what's playing
   POST /api/appletv               ->  {"host", "action"}: play_pause, next, previous, turn_on, turn_off
+  GET /api/wallpaper  ->  the background (your Wallpaper Engine wallpaper, via the PC agent)
+  GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
 
 Private settings (like your uTorrent password) go in local-settings.json next to
 this file. It is git-ignored and never served to the browser.
@@ -22,6 +24,7 @@ import concurrent.futures
 import http.cookiejar
 import ipaddress
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -371,6 +374,184 @@ def device_status(host, extra_ports=()):
     return 200, {"host": host, "online": online, "ms": ms if online else None}
 
 
+# ---------- Wallpaper (from Wallpaper Engine on the PC, via deskbuddy-agent.py) ----------
+WALL_DIR = os.path.join(ROOT, ".cache", "wallpaper")
+WALL_MAX_WIDTH = 1280          # plenty for a 7-inch screen, and smooth on a Pi
+WALL_MAX_BYTES = 2_000_000_000
+EXT_FOR = {"image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp",
+           "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+
+
+class Wallpaper:
+    """Checks the PC every minute; downloads (and shrinks) the wallpaper when it changes."""
+
+    def __init__(self):
+        self.error = None
+        self.state = {}
+        try:
+            with open(os.path.join(WALL_DIR, "state.json")) as f:
+                self.state = json.load(f)
+        except (OSError, ValueError):
+            pass
+
+    def _save(self, state):
+        self.state = state
+        os.makedirs(WALL_DIR, exist_ok=True)
+        with open(os.path.join(WALL_DIR, "state.json"), "w") as f:
+            json.dump(state, f)
+
+    def _download(self, url, name_base, ext_hint=""):
+        tmp = os.path.join(WALL_DIR, name_base + ".part")
+        with urllib.request.urlopen(url, timeout=30) as r, open(tmp, "wb") as f:
+            ext = EXT_FOR.get((r.headers.get("Content-Type") or "").split(";")[0], "")
+            total = 0
+            while chunk := r.read(1024 * 1024):
+                total += len(chunk)
+                if total > WALL_MAX_BYTES:
+                    raise ValueError("too big")
+                f.write(chunk)
+        if not ext:
+            ext = ext_hint if re.fullmatch(r"\.[a-z0-9]{2,5}", ext_hint or "") else ".bin"
+        final = name_base + ext
+        os.replace(tmp, os.path.join(WALL_DIR, final))
+        return final
+
+    def _needs_shrink(self, src):
+        """Wallpaper Engine videos are often 4K or HEVC, too heavy for a Pi to play smoothly."""
+        if not shutil.which("ffprobe"):
+            return True
+        try:
+            out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                  "stream=codec_name,width", "-of", "csv=p=0", os.path.join(WALL_DIR, src)],
+                                 capture_output=True, text=True, timeout=30).stdout.strip().split(",")
+            codec, width = out[0], int(out[1])
+        except (OSError, subprocess.TimeoutExpired, ValueError, IndexError):
+            return True
+        return codec != "h264" or width > WALL_MAX_WIDTH
+
+    def _shrink(self, src, dest):
+        """Re-encode a big wallpaper video to screen size (H.264, no audio). True if done."""
+        if not shutil.which("ffmpeg") or not self._needs_shrink(src):
+            return False
+        cmd = ["ffmpeg", "-y", "-v", "error", "-i", os.path.join(WALL_DIR, src), "-an",
+               "-vf", f"scale='min({WALL_MAX_WIDTH},iw)':-2,fps=30", "-c:v", "libx264", "-preset", "veryfast",
+               "-crf", "27", "-pix_fmt", "yuv420p", "-movflags", "+faststart", os.path.join(WALL_DIR, dest + ".part.mp4")]
+        try:
+            ok = subprocess.run(cmd, capture_output=True, timeout=3600).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            ok = False
+        if ok:
+            os.replace(os.path.join(WALL_DIR, dest + ".part.mp4"), os.path.join(WALL_DIR, dest))
+        return ok
+
+    def _cleanup(self, keep):
+        for name in os.listdir(WALL_DIR):
+            if name != "state.json" and name not in keep:
+                try:
+                    os.remove(os.path.join(WALL_DIR, name))
+                except OSError:
+                    pass
+
+    def tick(self):
+        cfg = local_settings().get("wallpaper") or {}
+        agent = (cfg.get("agent") or "").rstrip("/")
+        if not agent:
+            self.error = "not_set_up"
+            return
+        try:
+            info = fetch_json(f"{agent}/wallpaper/info", timeout=5)
+        except urllib.error.HTTPError as e:
+            self.error = "none_selected" if e.code == 404 else "unreachable"
+            return
+        except (urllib.error.URLError, OSError, ValueError):
+            self.error = "unreachable"
+            return
+        self.error = None
+        still = cfg.get("mode") == "still"
+        if self.state.get("id") == info.get("id") and self.state.get("still") == still:
+            return
+        os.makedirs(WALL_DIR, exist_ok=True)
+        wid = re.sub(r"[^\w-]", "", str(info.get("id", "")))[:32] or "wallpaper"
+        try:
+            state = {"id": wid, "title": info.get("title"), "still": still}
+            # A still image first, so the screen updates right away.
+            if info.get("hasPreview"):
+                state["image"] = self._download(f"{agent}/wallpaper/preview", f"{wid}-preview")
+            if info.get("type") == "image":
+                state["image"] = self._download(f"{agent}/wallpaper/file", wid, info.get("ext", ""))
+            self._save(state)
+            self._cleanup({v for k, v in state.items() if k in ("image", "video")})
+            if info.get("type") == "video" and not still:
+                orig = self._download(f"{agent}/wallpaper/file", f"{wid}-orig", info.get("ext", ""))
+                video = orig
+                if self._shrink(orig, f"{wid}.mp4"):
+                    video = f"{wid}.mp4"
+                state = dict(state, video=video)
+                self._save(state)
+                self._cleanup({state.get("image"), video})
+        except (urllib.error.URLError, OSError, ValueError):
+            self.error = "unreachable"
+
+    def loop(self):
+        while True:
+            try:
+                self.tick()
+            except Exception:
+                pass
+            time.sleep(60)
+
+    def status(self):
+        s = self.state
+        if not (s.get("image") or s.get("video")):
+            return {"state": self.error or "not_set_up"}
+        out = {"state": "ok", "id": s.get("id"), "title": s.get("title"), "stale": self.error}
+        if s.get("image"):
+            out["image"] = f"/wallpaper/{s['image']}"
+        if s.get("video"):
+            out["video"] = f"/wallpaper/{s['video']}"
+        return out
+
+
+wallpaper = Wallpaper()
+
+
+# ---------- Calendar (iCloud / calendar links) ----------
+class CalendarCache:
+    TTL = 300
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.cache = None  # (time, settings key, body)
+
+    def status(self, force=False):
+        cfg = local_settings().get("calendar") or {}
+        if not ((cfg.get("icloud") or {}).get("username") or cfg.get("urls")):
+            return 503, {"error": "not_set_up"}
+        try:
+            import calendar_sync
+        except ImportError:
+            return 503, {"error": "not_installed"}
+        with self.lock:
+            key = json.dumps(cfg, sort_keys=True)
+            if not force and self.cache and self.cache[1] == key and time.time() - self.cache[0] < self.TTL:
+                return 200, self.cache[2]
+            try:
+                body = {"events": calendar_sync.upcoming(cfg), "updated": int(time.time())}
+            except calendar_sync.NotInstalled:
+                return 503, {"error": "not_installed"}
+            except calendar_sync.AuthFailed:
+                return 503, {"error": "auth"}
+            except Exception:
+                if self.cache and self.cache[1] == key:
+                    return 200, dict(self.cache[2], stale=True)   # keep showing the last events
+                return 503, {"error": "unreachable"}
+            self.cache = (time.time(), key, body)
+            return 200, body
+
+
+calendar_cache = CalendarCache()
+
+
 # ---------- Apple TV (pyatv) ----------
 _appletv = None
 
@@ -420,6 +601,15 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*utorrent.status())
         if path == "/api/weather":
             return self.send_json(*weather.status())
+        if path == "/api/wallpaper":
+            return self.send_json(200, wallpaper.status())
+        if path == "/api/calendar":
+            return self.send_json(*calendar_cache.status(force="refresh" in self.path))
+        if path.startswith("/wallpaper/"):
+            name = path[len("/wallpaper/"):]
+            if not re.fullmatch(r"[\w.-]+", name) or name == "state.json" or name.endswith(".part"):
+                return self.send_json(404, {"error": "not_found"})
+            return self.send_media(os.path.join(WALL_DIR, name))
         if path in ("/api/appletv", "/api/appletv/artwork"):
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             host = q.get("host", [""])[0].strip()
@@ -452,6 +642,48 @@ class Handler(SimpleHTTPRequestHandler):
         if local.endswith(".html") and os.path.isfile(local):
             return self.send_page(local)
         super().do_GET()
+
+    def send_media(self, local):
+        """Serve a wallpaper file, with Range support so videos play and loop smoothly."""
+        try:
+            size = os.path.getsize(local)
+            f = open(local, "rb")
+        except OSError:
+            return self.send_json(404, {"error": "not_found"})
+        with f:
+            start, end, status = 0, size - 1, 200
+            m = re.fullmatch(r"bytes=(\d*)-(\d*)", (self.headers.get("Range") or "").strip())
+            if m and (m.group(1) or m.group(2)):
+                if m.group(1):
+                    start = int(m.group(1))
+                    end = min(int(m.group(2)), size - 1) if m.group(2) else size - 1
+                else:
+                    start = max(0, size - int(m.group(2)))
+                if start >= size or start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.end_headers()
+                    return
+                status = 206
+            self.send_response(status)
+            self.send_header("Content-Type", mimetypes.guess_type(local)[0] or "application/octet-stream")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Cache-Control", "max-age=86400")  # file names change with the wallpaper
+            if status == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.end_headers()
+            f.seek(start)
+            left = end - start + 1
+            try:
+                while left > 0:
+                    chunk = f.read(min(left, 1024 * 1024))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    left -= len(chunk)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # the browser stopped this request (normal while seeking/looping)
 
     def send_page(self, local):
         """Serve a page with a version stamp on each of its files (assets/x.js?v=…),
@@ -494,7 +726,7 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         # Always re-check the dashboard's own files, so a `git pull` takes effect
         # on the next reload instead of mixing old and new files.
-        if not self.path.startswith("/api/"):
+        if not self.path.startswith(("/api/", "/wallpaper/")):
             self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
@@ -504,6 +736,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"DeskBuddy running at http://{HOST}:{PORT}/  (Ctrl+C to stop)")
+    threading.Thread(target=wallpaper.loop, daemon=True).start()
     try:
         ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
     except KeyboardInterrupt:

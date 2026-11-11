@@ -5,25 +5,32 @@
 
   const summary = { devices: '', servers: '', downloads: '', tailscale: '' };
   const renderSummary = () => {
-    $('sh-summary').textContent = [summary.devices, summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
+    const el = $('sh-summary');
+    if (el) el.textContent = [summary.devices, summary.servers, summary.downloads, summary.tailscale].filter(Boolean).join(' · ');
   };
 
   // ---------- Tabs ----------
-  const TABS = ['devices', 'servers', 'downloads', 'tailscale'];
+  const TABS = ['spotify', 'devices', 'servers', 'downloads', 'tailscale', 'calendar'];
+  let currentTab = null;
   function showTab(name) {
-    if (!TABS.includes(name)) name = 'devices';
+    if (!TABS.includes(name)) name = 'spotify';
+    currentTab = name;
     document.querySelectorAll('.tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === name);
       t.setAttribute('aria-selected', t.dataset.tab === name);
     });
-    TABS.forEach(t => { $(`panel-${t}`).hidden = t !== name; });
-    history.replaceState(null, '', `#${name}`);
+    TABS.forEach(t => { const p = $(`panel-${t}`); if (p) p.hidden = t !== name; });
+    try { localStorage.setItem('deskbuddy.tab', name); } catch (e) {}
+    window.dispatchEvent(new CustomEvent('deskbuddy:tab', { detail: name }));
   }
   $('tabs').addEventListener('click', e => {
     const t = e.target.closest('[data-tab]');
     if (t) showTab(t.dataset.tab);
   });
-  showTab(location.hash.slice(1));
+  let savedTab = null;
+  try { savedTab = localStorage.getItem('deskbuddy.tab'); } catch (e) {}
+  showTab(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : savedTab);
+  window.DeskTabs = { show: showTab, list: TABS, get current() { return currentTab; } };
 
   // ---------- Devices (computer, Apple TV, …) ----------
   const DEV_STATUS = {

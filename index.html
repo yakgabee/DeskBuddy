@@ -6,85 +6,143 @@
   <title>DeskBuddy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/errors.js"></script>
   <script src="assets/kiosk.js"></script>
 </head>
 <body class="home">
-  <main class="dashboard">
-    <!-- Time & date -->
-    <section class="clock card">
-      <div class="clock-main">
-        <div class="greeting" id="greeting">Good evening</div>
-        <div class="clock-time" id="time">--:--<span class="ampm"></span></div>
-        <div class="clock-date" id="date"></div>
-      </div>
-      <div class="weather" id="weather" hidden>
-        <div class="wx-now"><span class="wx-icon" id="wx-icon"></span><span class="wx-temp" id="wx-temp"></span></div>
-        <div class="wx-cond" id="wx-cond"></div>
-        <div class="wx-range" id="wx-range"></div>
-      </div>
-    </section>
+  <!-- Background: your Wallpaper Engine wallpaper (synced from your PC) -->
+  <div class="wall" id="wall">
+    <img id="wall-img" alt="">
+    <video id="wall-video" muted loop playsinline preload="auto"></video>
+    <div class="wall-shade"></div>
+  </div>
 
-    <!-- Smart Home widget -->
-    <a class="smart-home-tile card" href="smart-home.html" aria-label="Open Smart Home">
-      <div class="tile-head">
-        <div class="tile-title"><span class="tile-icon" data-icon="home"></span>Smart Home</div>
-        <span class="tile-arrow" data-icon="chevronRight"></span>
-      </div>
-      <div class="tile-stats">
-        <div><div class="stat-value" id="stat-devices">–</div><div class="stat-label">Devices online</div></div>
-        <div><div class="stat-value" id="stat-servers">–</div><div class="stat-label">Servers up</div></div>
-        <div><div class="stat-value" id="stat-ts">–</div><div class="stat-label">Tailscale online</div></div>
-      </div>
-    </a>
-
-    <!-- uTorrent: only shown while something is downloading -->
-    <a class="downloads card" id="downloads" href="smart-home.html#downloads" hidden>
-      <div class="dl-head">
-        <span class="dl-title"><span data-icon="download" data-size="18"></span><span id="dl-title">Downloading</span></span>
-        <span class="muted" id="dl-speed"></span>
-      </div>
-      <div class="dl-list" id="dl-list"></div>
-    </a>
-
-    <!-- Spotify now playing -->
-    <section class="now-playing card is-empty" id="now-playing">
-      <div class="cover-wrap">
-        <button class="cover" id="cover" aria-label="Show lyrics">
-          <img id="cover-img" alt="" hidden>
-          <span class="cover-icon" data-icon="lyrics" data-size="56"></span>
-          <span class="cover-album" id="cover-album"></span>
-          <span class="cover-artist" id="cover-artist"></span>
-          <span class="cover-hint"><span data-icon="lyrics" data-size="14"></span>Lyrics</span>
+  <!-- Home: date, big clock, Tabs -->
+  <main class="screen" id="screen">
+    <header class="topbar">
+      <div class="date" id="date"></div>
+      <div class="top-right">
+        <div class="weather" id="weather" hidden>
+          <span class="wx-icon" id="wx-icon"></span><span class="wx-temp" id="wx-temp"></span>
+          <span class="wx-cond" id="wx-cond"></span><span class="wx-range" id="wx-range" hidden></span>
+        </div>
+        <button class="dl-badge" id="downloads" hidden aria-label="Downloads">
+          <span id="dl-pct"></span>
+          <svg class="dl-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#fff"/><path d="M24 11v22M14 24l10 10 10-10" fill="none" stroke="#000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
-      <div class="np-info">
-        <div class="np-label">
-          <span class="dot"></span><span id="np-source">Spotify</span>
-          <button class="link-btn" id="btn-disconnect" hidden>Disconnect</button>
-        </div>
-        <div class="np-title" id="np-title">Spotify</div>
-        <div class="np-artist" id="np-artist"></div>
-        <div class="np-album" id="np-album"></div>
-        <p class="np-message" id="np-message" hidden></p>
-        <button class="connect-btn" id="btn-connect" hidden>Connect Spotify</button>
-        <div class="player-ui">
-          <div class="progress">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
-          </div>
-          <div class="controls">
-            <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
-            <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
-            <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
-            <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
-          </div>
-        </div>
+    </header>
+    <div class="rule"></div>
+    <section class="clock-zone">
+      <div class="big-clock" id="time">--:--</div>
+      <div class="glance">
+        <button id="glance-music" hidden></button>
+        <button id="glance-event" hidden></button>
       </div>
     </section>
+    <div class="rule"></div>
+    <button class="tabs-toggle" id="open-tabs">Tabs</button>
   </main>
+
+  <!-- Tabs -->
+  <section class="sheet" id="sheet" aria-label="Tabs">
+    <header class="sheet-top">
+      <nav class="tabs" id="tabs" role="tablist">
+        <button class="tab" data-tab="spotify" role="tab"><span class="tab-logo" data-logo="spotify"></span><span class="tab-label">Spotify</span></button>
+        <button class="tab" data-tab="devices" role="tab"><span class="tab-logo" data-logo="devices"></span><span class="tab-label">Devices</span><span class="count" id="tab-devices"></span></button>
+        <button class="tab" data-tab="servers" role="tab"><span class="tab-logo" data-logo="servers"></span><span class="tab-label">Servers</span><span class="count" id="tab-servers"></span></button>
+        <button class="tab" data-tab="downloads" role="tab"><span class="tab-logo" data-logo="downloads"></span><span class="tab-label">Downloads</span><span class="count" id="tab-downloads"></span></button>
+        <button class="tab" data-tab="tailscale" role="tab"><span class="tab-logo" data-logo="tailscale"></span><span class="tab-label">Tailscale</span><span class="count" id="tab-tailscale"></span></button>
+        <button class="tab" data-tab="calendar" role="tab"><span class="tab-logo" data-logo="calendar"></span><span class="tab-label">Calendar</span><span class="count" id="tab-calendar"></span></button>
+      </nav>
+      <div class="sh-clock" id="sh-clock"></div>
+    </header>
+    <div class="rule"></div>
+    <div class="sheet-body">
+      <!-- Spotify (or the Apple TV when Spotify isn't playing) -->
+      <section class="panel" id="panel-spotify" role="tabpanel">
+        <section class="now-playing card is-empty" id="now-playing">
+          <div class="cover-wrap">
+            <button class="cover" id="cover" aria-label="Show lyrics">
+              <img id="cover-img" alt="" hidden>
+              <span class="cover-icon" data-icon="lyrics" data-size="56"></span>
+              <span class="cover-album" id="cover-album"></span>
+              <span class="cover-artist" id="cover-artist"></span>
+              <span class="cover-hint"><span data-icon="lyrics" data-size="14"></span>Lyrics</span>
+            </button>
+          </div>
+          <div class="np-info">
+            <div class="np-label">
+              <span class="dot"></span><span id="np-source">Spotify</span>
+              <button class="link-btn" id="btn-disconnect" hidden>Disconnect</button>
+            </div>
+            <div class="np-title" id="np-title">Spotify</div>
+            <div class="np-artist" id="np-artist"></div>
+            <div class="np-album" id="np-album"></div>
+            <p class="np-message" id="np-message" hidden></p>
+            <button class="connect-btn" id="btn-connect" hidden>Connect Spotify</button>
+            <div class="player-ui">
+              <div class="progress">
+                <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                <div class="progress-times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
+              </div>
+              <div class="controls">
+                <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
+                <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
+                <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
+                <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+        <!-- Devices -->
+        <section class="panel" id="panel-devices" role="tabpanel">
+          <div class="panel-bar"><span class="muted" id="dev-meta">Checking devices…</span></div>
+          <div class="dev-grid" id="devices"></div>
+        </section>
+
+        <!-- Servers -->
+        <section class="panel" id="panel-servers" role="tabpanel" hidden>
+          <div class="panel-bar">
+            <span class="muted">Checked <span id="srv-checked">–</span></span>
+            <button class="open-btn" id="srv-refresh">Check now</button>
+          </div>
+          <div class="srv-summary">
+            <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
+            <div class="srv-stat card"><div class="stat-value" id="srv-down">–</div><div class="stat-label">Stopped</div></div>
+            <div class="srv-stat card"><div class="stat-value" id="srv-ms">–</div><div class="stat-label">Avg response</div></div>
+          </div>
+          <div class="servers" id="servers"></div>
+        </section>
+
+        <!-- Downloads -->
+        <section class="panel" id="panel-downloads" role="tabpanel" hidden>
+          <div class="panel-bar"><span class="muted" id="tor-meta"></span></div>
+          <div class="ts card" id="torrents"><p class="ts-empty">Loading downloads…</p></div>
+        </section>
+
+        <!-- Tailscale -->
+        <section class="panel" id="panel-tailscale" role="tabpanel" hidden>
+          <div class="panel-bar"><span class="muted" id="ts-meta"></span></div>
+          <div class="ts card" id="tailscale"><p class="ts-empty">Loading Tailscale…</p></div>
+        </section>
+
+      <!-- Calendar -->
+      <section class="panel" id="panel-calendar" role="tabpanel" hidden>
+        <div class="panel-bar">
+          <span class="muted" id="cal-meta">Loading your calendar…</span>
+          <button class="open-btn" id="cal-refresh">Refresh</button>
+        </div>
+        <div class="agenda" id="agenda"></div>
+      </section>
+    </div>
+    <div class="rule"></div>
+    <button class="tabs-toggle" id="close-tabs">Clock</button>
+  </section>
 
   <!-- Lyrics overlay -->
   <div class="lyrics" id="lyrics" role="dialog" aria-label="Lyrics">
@@ -100,6 +158,7 @@
 
   <script src="assets/config.js"></script>
   <script src="assets/icons.js"></script>
+  <script src="assets/logos.js"></script>
   <script src="assets/clock.js"></script>
   <script src="assets/servers.js"></script>
   <script src="assets/tailscale.js"></script>
@@ -111,5 +170,8 @@
   <script src="assets/spotify.js"></script>
   <script src="assets/lyrics.js"></script>
   <script src="assets/home.js"></script>
+  <script src="assets/smart-home.js"></script>
+  <script src="assets/calendar.js"></script>
+  <script src="assets/shell.js"></script>
 </body>
 </html>

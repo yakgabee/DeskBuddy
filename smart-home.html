@@ -2,73 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DeskBuddy · Smart Home</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css">
-  <script src="assets/errors.js"></script>
-  <script src="assets/kiosk.js"></script>
+  <title>DeskBuddy</title>
+  <script>location.replace('index.html' + (location.hash || '#devices'));</script>
 </head>
-<body class="home">
-  <main class="sh-page">
-    <header class="sh-header">
-      <a class="back-btn" href="index.html" aria-label="Back to dashboard" data-icon="arrowLeft"></a>
-      <div class="sh-titles">
-        <h1>Smart Home</h1>
-        <div class="sub" id="sh-summary"></div>
-      </div>
-      <nav class="tabs" id="tabs" role="tablist">
-        <button class="tab active" data-tab="devices" role="tab"><span data-icon="home" data-size="16"></span>Devices<span class="count" id="tab-devices"></span></button>
-        <button class="tab" data-tab="servers" role="tab"><span data-icon="server" data-size="16"></span>Servers<span class="count" id="tab-servers"></span></button>
-        <button class="tab" data-tab="downloads" role="tab"><span data-icon="download" data-size="16"></span>Downloads<span class="count" id="tab-downloads"></span></button>
-        <button class="tab" data-tab="tailscale" role="tab"><span data-icon="network" data-size="16"></span>Tailscale<span class="count" id="tab-tailscale"></span></button>
-      </nav>
-      <div class="sh-clock" id="sh-clock"></div>
-    </header>
-
-    <!-- Devices -->
-    <section class="panel" id="panel-devices" role="tabpanel">
-      <div class="panel-bar"><span class="muted" id="dev-meta">Checking devices…</span></div>
-      <div class="dev-grid" id="devices"></div>
-    </section>
-
-    <!-- Servers -->
-    <section class="panel" id="panel-servers" role="tabpanel" hidden>
-      <div class="panel-bar">
-        <span class="muted">Checked <span id="srv-checked">–</span></span>
-        <button class="open-btn" id="srv-refresh">Check now</button>
-      </div>
-      <div class="srv-summary">
-        <div class="srv-stat card"><div class="stat-value good" id="srv-up">–</div><div class="stat-label">Running</div></div>
-        <div class="srv-stat card"><div class="stat-value" id="srv-down">–</div><div class="stat-label">Stopped</div></div>
-        <div class="srv-stat card"><div class="stat-value" id="srv-ms">–</div><div class="stat-label">Avg response</div></div>
-      </div>
-      <div class="servers" id="servers"></div>
-    </section>
-
-    <!-- Downloads -->
-    <section class="panel" id="panel-downloads" role="tabpanel" hidden>
-      <div class="panel-bar"><span class="muted" id="tor-meta"></span></div>
-      <div class="ts card" id="torrents"><p class="ts-empty">Loading downloads…</p></div>
-    </section>
-
-    <!-- Tailscale -->
-    <section class="panel" id="panel-tailscale" role="tabpanel" hidden>
-      <div class="panel-bar"><span class="muted" id="ts-meta"></span></div>
-      <div class="ts card" id="tailscale"><p class="ts-empty">Loading Tailscale…</p></div>
-    </section>
-  </main>
-
-  <script src="assets/config.js"></script>
-  <script src="assets/icons.js"></script>
-  <script src="assets/clock.js"></script>
-  <script src="assets/servers.js"></script>
-  <script src="assets/tailscale.js"></script>
-  <script src="assets/torrents.js"></script>
-  <script src="assets/devices.js"></script>
-  <script src="assets/appletv.js"></script>
-  <script src="assets/smart-home.js"></script>
-</body>
+<body></body>
 </html>

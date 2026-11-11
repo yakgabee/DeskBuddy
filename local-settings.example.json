@@ -1,10 +1,17 @@
 {
   "weather": {
-    "apiKey": "your-openweathermap-api-key"
+    "apiKey": "your-openweathermap-api-key",
+    "city": "Toronto,CA"
   },
   "utorrent": {
-    "url": "http://127.0.0.1:8080",
+    "url": "http://10.0.10.132:8080",
     "username": "admin",
     "password": "your-web-ui-password"
+  },
+  "wallpaper": {
+    "agent": "http://10.0.10.132:9091"
+  },
+  "calendar": {
+    "icloud": { "username": "you@icloud.com", "appPassword": "abcd-efgh-ijkl-mnop" }
   }
 }

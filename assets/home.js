@@ -2,30 +2,12 @@
   const $ = id => document.getElementById(id);
   const DEMO = new URLSearchParams(location.search).has('demo');
 
-  // ---------- Clock ----------
-  DeskClock.start({ time: $('time'), date: $('date'), greeting: $('greeting') });
+  // (The clock and date are drawn by shell.js.)
 
   // ---------- Smart home summary ----------
+  // The Devices / Servers / Tailscale counts live on the tabs (smart-home.js).
   let lastAtv = null; // latest Apple TV status (set by pollAppleTV below)
-  // Each stat fills in on its own, so one failing check can't blank the others.
-  const refreshStatus = () => {
-    DeskServers.checkAll().then(servers => {
-      const sv = DeskServers.summary(servers);
-      $('stat-servers').textContent = `${sv.up}/${sv.total}`;
-    }).catch(() => {});
-    DeskTailscale.status().then(ts => {
-      const t = DeskTailscale.summary(ts);
-      $('stat-ts').textContent = t ? `${t.online}/${t.total}` : '–';
-    }).catch(() => {});
-    DeskDevices.checkAll().then(checked => {
-      // The Apple TV counts as online whenever pyatv can talk to it.
-      const devices = checked.map(d => d.appletv && lastAtv && lastAtv.state === 'ok' ? { ...d, status: 'online' } : d);
-      const dv = DeskDevices.summary(devices);
-      $('stat-devices').textContent = dv.total ? `${dv.online}/${dv.total}` : '–';
-    }).catch(() => {});
-  };
-  refreshStatus();
-  setInterval(refreshStatus, 60000);
+  const refreshStatus = () => {};
 
   // ---------- Weather ----------
   // When weather can't load, say why instead of hiding it.
@@ -66,23 +48,15 @@
 
   // ---------- Downloads (uTorrent) ----------
   const escHtml = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // Top-right download badge, shown only while something is downloading.
   const refreshDownloads = async () => {
     const d = await DeskTorrents.status();
     const active = DeskTorrents.active(d);
     $('downloads').hidden = !active.length;
-    document.querySelector('.dashboard').classList.toggle('has-downloads', active.length > 0);
     if (!active.length) return;
-    $('dl-title').textContent = active.length === 1 ? 'Downloading' : `Downloading ${active.length} files`;
-    $('dl-speed').textContent = `↓ ${DeskTorrents.speed(d.downSpeed)}`;
-    const shown = active.slice(0, 2);
-    $('dl-list').innerHTML = shown.map(t => `
-      <div class="dl-item">
-        <div class="dl-row"><span class="dl-name">${escHtml(t.name)}</span><span class="dl-pct">${Math.floor(t.progress)}%</span></div>
-        <div class="meter"><div style="width:${t.progress}%"></div></div>
-        <div class="dl-meta">${t.state === 'stalled' ? 'Waiting for peers' : [DeskTorrents.speed(t.downSpeed), DeskTorrents.eta(t.eta)].filter(Boolean).join(' · ')}
-          · ${DeskTorrents.bytes(t.size - t.remaining)} of ${DeskTorrents.bytes(t.size)}</div>
-      </div>`).join('')
-      + (active.length > shown.length ? `<div class="dl-more">+${active.length - shown.length} more</div>` : '');
+    const pct = Math.floor(active.reduce((a, t) => a + t.progress, 0) / active.length);
+    $('dl-pct').textContent = active.length > 1 ? `${active.length} · ${pct}%` : `${pct}%`;
+    $('downloads').title = active.map(t => `${t.name} — ${Math.floor(t.progress)}%`).join('\n') + `\n↓ ${DeskTorrents.speed(d.downSpeed)}`;
   };
   refreshDownloads();
   setInterval(refreshDownloads, 3000);
@@ -138,6 +112,7 @@
     track = null;
     showState(spotifyEmpty || { source: 'Spotify', title: 'Spotify' });
     $('btn-disconnect').hidden = DEMO || !Spotify.isLoggedIn();
+    announce();
   }
   let renderedId = null;
   let lyrics = null;      // { synced, lines: [[time|null, text]] }
@@ -241,6 +216,17 @@
     $('np-source').textContent = sourceLabel(track);
     $('btn-disconnect').hidden = DEMO || track.source === 'appletv' || !Spotify.isLoggedIn();
     renderProgress();
+    announce();
+  }
+
+  // Tell the home screen what's playing (the line under the clock).
+  let announced = '';
+  function announce() {
+    const info = track ? { title: track.title, artist: track.artist, playing: track.playing, source: track.source || 'spotify' } : null;
+    const key = JSON.stringify(info);
+    if (key === announced) return;
+    announced = key;
+    window.dispatchEvent(new CustomEvent('deskbuddy:nowplaying', { detail: info }));
   }
 
   // Move the progress bar smoothly between Spotify polls.

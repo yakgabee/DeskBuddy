@@ -1,9 +1,16 @@
 # DeskBuddy
 
-A desktop home dashboard: clock and weather, Spotify now-playing with synced
-lyrics (or what's on the Apple TV), uTorrent downloads, and a Smart Home page
-with tabs for your devices (computer, Apple TV with remote), servers, downloads
-and Tailscale.
+A desk / wall display for a Raspberry Pi with a 7-inch screen.
+
+**Home screen:** your Wallpaper Engine wallpaper fills the screen, with the date,
+a big clock, the weather, what's playing and your next event. A download badge
+appears top-right while something downloads.
+
+**Tabs** (tap "Tabs" or swipe up): Spotify (with synced lyrics, or the Apple TV
+when Spotify isn't playing), Devices (computer, Apple TV with remote), Servers
+(Jellyfin, RAM/storage of your server), Downloads (uTorrent), Tailscale and
+Calendar (iCloud). Tap "Clock" or swipe down to go back; it also returns to the
+clock by itself after 2 minutes.
 
 ## Run it
 
@@ -70,8 +77,44 @@ Everything lives in [`assets/config.js`](assets/config.js):
 - **Spotify:** your app's Client ID and Redirect URI. DeskBuddy uses Spotify's
   PKCE login, which is made for browser apps — the **Client Secret is not used and
   must never be put in this project**.
-- **Servers:** the list shown on the Smart Home page. Jellyfin servers also show
+- **Servers:** the list shown on the Servers tab. Jellyfin servers also show
   their name and version.
+
+## Wallpaper (from Wallpaper Engine)
+
+The background is whatever wallpaper Wallpaper Engine is showing on your PC. A
+small helper on the PC shares it with the Pi; the Pi checks every minute and
+updates when you change it.
+
+- **Video wallpapers** play as video. Big ones (4K, HEVC) are re-encoded on the Pi
+  to 1280 px H.264 so they play smoothly (needs `ffmpeg`; `setup-pi.sh` installs it).
+  The preview image shows while that happens.
+- **Scene and web wallpapers** can't run on a Pi, so their preview image is used
+  (often an animated GIF).
+- If the PC is off, the last wallpaper stays.
+
+**On the PC** (needs [Python 3](https://www.python.org/downloads/), tick
+"Add python.exe to PATH"): double-click `agent\install-windows.bat`. It installs the
+helper, starts it now and at every login, allows it through Windows Firewall for
+your home network only, and shows the address to use on the Pi.
+
+**On the Pi:** run `./setup-pi.sh` and enter that address (e.g.
+`http://10.0.10.132:9091`). It's saved as `"wallpaper": {"agent": "…"}` in
+`local-settings.json`; add `"mode": "still"` there to always use a still image
+(less work for the Pi).
+
+## Calendar (iCloud)
+
+The Calendar tab shows the next two weeks, and the home screen shows what's next.
+
+1. Make an **app-specific password**: [appleid.apple.com](https://appleid.apple.com)
+   → Sign-In and Security → App-Specific Passwords → **+** (name it "DeskBuddy").
+   Your normal Apple ID password won't work.
+2. Run `./setup-pi.sh` and enter your Apple ID email and that password. You can
+   limit it to some calendars (e.g. `Home, Work`).
+
+It's saved in `local-settings.json` on the Pi only. Calendar links (`webcal://…`)
+work too: add them as `"urls": [...]` inside `"calendar"`.
 
 ## Weather
 
@@ -94,14 +137,14 @@ then the dashboard says "Weather key not active yet".
 
 ## Devices (computer, Apple TV)
 
-Smart Home → **Devices** shows whether each device is online. Edit the `devices`
+The **Devices** tab shows whether each device is online. Edit the `devices`
 list in `assets/config.js`: give each one its IP address on your home network.
 Optionally add a `port` the device always has open for a more reliable check
 (Apple TV: `7000`). Find an Apple TV's IP in **Settings → Network**.
 
 ## Apple TV
 
-With [pyatv](https://pyatv.dev), the Apple TV card on Smart Home → **Devices**
+With [pyatv](https://pyatv.dev), the Apple TV card on the **Devices** tab
 shows whether it's awake or asleep, what's playing (with artwork and progress),
 and has play/pause, skip and Sleep / Turn on buttons. When Spotify isn't playing,
 the home screen's player shows what's on the Apple TV instead.
@@ -180,9 +223,9 @@ The agent only reports numbers (hostname, RAM, disk usage); it can't change anyt
 
 ## Show uTorrent downloads
 
-While something is downloading, a **Downloading** card appears on the home screen
-with progress, speed and time left. It disappears when nothing is downloading.
-The Smart Home page lists every torrent.
+While something is downloading, a download badge appears at the top right of the
+home screen with the progress. Tap it for the Downloads tab.
+The Downloads tab lists every torrent.
 
 This uses uTorrent's built-in Web UI (uTorrent Classic, the desktop app):
 
