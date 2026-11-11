@@ -56,16 +56,19 @@
     }
   }
 
-  async function api(path, method = 'GET', retried = false) {
+  async function api(path, method = 'GET', retried = false, body = null) {
     const token = await accessToken(retried);
     let res;
     try {
-      res = await fetch(API + path, { method, headers: { Authorization: `Bearer ${token}` } });
+      res = await fetch(API + path, {
+        method, headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+      });
     } catch (e) {
       throw fail('Can\'t reach Spotify', 'network');
     }
     if (res.status === 401) {
-      if (!retried) return api(path, method, true); // token went stale early: refresh once
+      if (!retried) return api(path, method, true, body); // token went stale early: refresh once
       store.clear();
       throw fail('Spotify login expired', 'auth');
     }
@@ -73,6 +76,7 @@
       throw fail('Spotify asked us to slow down', 'rate', { retryAfter: Number(res.headers.get('Retry-After')) || 30 });
     }
     if (res.status === 403 && method !== 'GET') throw fail('Playback controls need Spotify Premium', 'premium');
+    if (res.status === 404 && method !== 'GET') throw fail('No active Spotify device', 'no_device');
     if (res.status === 204 || res.status === 202) return null;
     if (!res.ok) throw fail(`Spotify error ${res.status}`, 'network');
     const text = await res.text();
@@ -140,5 +144,39 @@
     pause() { return api('/me/player/pause', 'PUT'); },
     next() { return api('/me/player/next', 'POST'); },
     previous() { return api('/me/player/previous', 'POST'); },
+
+    // ---------- Search ----------
+    async search(q) {
+      const d = await api(`/search?${new URLSearchParams({ q, type: 'track,artist,album,playlist', limit: '8' })}`);
+      const img = imgs => (imgs || []).slice(-2)[0]?.url || imgs?.[0]?.url || null;   // a small one
+      return {
+        tracks: (d?.tracks?.items || []).filter(Boolean).map(t => ({
+          kind: 'track', uri: t.uri, title: t.name, sub: t.artists.map(a => a.name).join(', '),
+          image: img(t.album?.images), duration: t.duration_ms / 1000, explicit: t.explicit })),
+        artists: (d?.artists?.items || []).filter(Boolean).map(a => ({
+          kind: 'artist', uri: a.uri, title: a.name, sub: 'Artist', image: img(a.images) })),
+        albums: (d?.albums?.items || []).filter(Boolean).map(a => ({
+          kind: 'album', uri: a.uri, title: a.name, sub: `${a.artists.map(x => x.name).join(', ')} · ${(a.release_date || '').slice(0, 4)}`,
+          image: img(a.images) })),
+        playlists: (d?.playlists?.items || []).filter(Boolean).map(p => ({
+          kind: 'playlist', uri: p.uri, title: p.name, sub: `Playlist · ${p.owner?.display_name || ''}`, image: img(p.images) })),
+      };
+    },
+
+    // Play a search result. With nothing playing anywhere, start it on the
+    // first Spotify device that's online (your PC, phone, a speaker…).
+    async playItem(item) {
+      const body = item.kind === 'track' ? { uris: [item.uri] } : { context_uri: item.uri };
+      try {
+        return await api('/me/player/play', 'PUT', false, body);
+      } catch (e) {
+        if (e.code !== 'no_device') throw e;
+        const devices = (await api('/me/player/devices'))?.devices || [];
+        const dev = devices.find(d => d.is_active) || devices.find(d => !d.is_restricted);
+        if (!dev) throw e;
+        return api(`/me/player/play?device_id=${encodeURIComponent(dev.id)}`, 'PUT', false, body);
+      }
+    },
+    queue(uri) { return api(`/me/player/queue?uri=${encodeURIComponent(uri)}`, 'POST'); },
   };
 })();

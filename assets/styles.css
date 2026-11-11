@@ -450,3 +450,46 @@ html, * { scrollbar-width: none; }
   .tabs { gap: 6px; }
 }
 
+
+/* ---------- Spotify search ---------- */
+.search-btn { margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #48484a; color: var(--text); font-size: 13px; font-weight: 600; }
+.search-btn:hover { background: #545456; }
+#btn-disconnect:not([hidden]) + .search-btn { margin-left: 4px; }
+.search { position: fixed; inset: 0; z-index: 55; background: var(--sheet-bg); display: flex; flex-direction: column; gap: 10px; padding: clamp(10px, 2.4vh, 22px) var(--pad) 0; }
+.search[hidden] { display: none; }
+.search-head { display: flex; align-items: center; gap: 12px; }
+.search-field { flex: 1; display: flex; align-items: center; gap: 10px; background: #fff; color: #000; border-radius: 999px; padding: 0 8px 0 16px; height: clamp(42px, 8vh, 52px); }
+.search-field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 500 17px var(--sans); color: #000; }
+.search-field input::-webkit-search-cancel-button { display: none; }
+.search-clear { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #555; background: #e5e5e7; }
+.search-clear[hidden] { display: none; }
+.search-tabs { display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; }
+.chip { flex-shrink: 0; padding: 7px 14px; border-radius: 999px; background: #48484a; color: var(--text); font-size: 13px; font-weight: 600; }
+.chip.active { background: #fff; color: #000; }
+.search-results { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px; transition: opacity 0.15s; }
+.search-results.loading { opacity: 0.6; }
+.search-msg { color: var(--muted); font-size: 15px; margin: 18px 4px; }
+.sr-head { font-family: var(--mono); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 6px 2px; }
+.sr-recent { display: flex; flex-wrap: wrap; gap: 8px; }
+.sr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 4px 12px; }
+.sr-row { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 10px; cursor: pointer; min-width: 0; }
+.sr-row:hover, .sr-row:active { background: var(--sheet-card); }
+.sr-art { width: 46px; height: 46px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: var(--sheet-card); display: grid; place-items: center; color: var(--muted); }
+.sr-art.round { border-radius: 50%; }
+.sr-art img { width: 100%; height: 100%; object-fit: cover; }
+.sr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sr-text b, .sr-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-text b { font-size: 15px; font-weight: 600; }
+.sr-text small { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.sr-e { font-style: normal; font-size: 9px; font-weight: 700; background: #8e8e93; color: #000; border-radius: 2px; padding: 0 3px; margin-left: 6px; vertical-align: 2px; }
+.sr-time { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sr-queue { width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: var(--text); background: #48484a; }
+.sr-queue.done { background: var(--spotify); color: #000; }
+.osk { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px 0 clamp(8px, 1.6vh, 14px); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.kb-hidden .osk { display: none; }
+.osk-row { display: flex; gap: 6px; justify-content: center; }
+.osk-key { flex: 1; max-width: 86px; height: clamp(34px, 7.2vh, 52px); border-radius: 8px; background: #545456; color: #fff; font: 600 clamp(15px, 2.6vh, 19px) var(--sans); display: grid; place-items: center; touch-action: manipulation; user-select: none; }
+.osk-key:active { background: #8e8e93; }
+.osk-back, .osk-hide { background: #48484a; }
+.osk-space { flex: 5; max-width: 440px; font-size: 14px; }
+.osk-done { flex: 1.6; max-width: 140px; background: var(--spotify); color: #000; font-size: 15px; }

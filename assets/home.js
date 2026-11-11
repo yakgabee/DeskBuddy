@@ -112,6 +112,7 @@
     track = null;
     showState(spotifyEmpty || { source: 'Spotify', title: 'Spotify' });
     $('btn-disconnect').hidden = DEMO || !Spotify.isLoggedIn();
+    $('btn-search').hidden = DEMO || !Spotify.isLoggedIn();
     announce();
   }
   let renderedId = null;
@@ -215,6 +216,7 @@
     if (track.id !== renderedId) renderTrack();
     $('np-source').textContent = sourceLabel(track);
     $('btn-disconnect').hidden = DEMO || track.source === 'appletv' || !Spotify.isLoggedIn();
+    $('btn-search').hidden = DEMO || !Spotify.isLoggedIn();
     renderProgress();
     announce();
   }
@@ -270,7 +272,7 @@
       const t = await Spotify.nowPlaying();
       spotifyTrack = t ? { ...t, source: 'spotify' } : null;
       spotifyEmpty = { source: 'Spotify', title: 'Nothing playing',
-        message: 'Start something on Spotify or the Apple TV and it\'ll show up here.' };
+        message: 'Tap Search to pick something, or start it on Spotify or the Apple TV and it\'ll show up here.' };
       decide();
     } catch (e) {
       if (e.code === 'auth') return pollSpotify();
@@ -318,6 +320,8 @@
   $('btn-prev').onclick = () => control('previous');
   $('btn-connect').onclick = () => Spotify.login();
   $('btn-disconnect').onclick = () => { Spotify.logout(); pollSpotify(); };
+  // A song picked in search: show it as soon as Spotify has started it.
+  window.addEventListener('deskbuddy:spotify-refresh', () => { setTimeout(pollSpotify, 700); setTimeout(pollSpotify, 2000); });
 
   // ---------- Lyrics overlay ----------
   function openLyrics() {

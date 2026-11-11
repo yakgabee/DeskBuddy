@@ -55,6 +55,7 @@
             <div class="np-label">
               <span class="dot"></span><span id="np-source">Spotify</span>
               <button class="link-btn" id="btn-disconnect" hidden>Disconnect</button>
+              <button class="search-btn" id="btn-search" hidden><span data-icon="search" data-size="15"></span>Search</button>
             </div>
             <div class="np-title" id="np-title">Spotify</div>
             <div class="np-artist" id="np-artist"></div>
@@ -148,6 +149,27 @@
     <div class="lyrics-body" id="lyrics-body"></div>
   </div>
 
+  <!-- Spotify search -->
+  <div class="search" id="search" role="dialog" aria-label="Search Spotify" hidden>
+    <div class="search-head">
+      <label class="search-field">
+        <span data-icon="search" data-size="20"></span>
+        <input id="search-input" type="search" placeholder="Songs, artists, albums or playlists" autocomplete="off" spellcheck="false" inputmode="none">
+        <button class="search-clear" id="search-clear" aria-label="Clear" data-icon="x" data-size="16" hidden></button>
+      </label>
+      <button class="close-btn" id="search-close" aria-label="Close search" data-icon="x"></button>
+    </div>
+    <div class="search-tabs" id="search-tabs">
+      <button class="chip active" data-kind="all">All</button>
+      <button class="chip" data-kind="tracks">Songs</button>
+      <button class="chip" data-kind="artists">Artists</button>
+      <button class="chip" data-kind="albums">Albums</button>
+      <button class="chip" data-kind="playlists">Playlists</button>
+    </div>
+    <div class="search-results" id="search-results"></div>
+    <div class="osk" id="osk"></div>
+  </div>
+
   <!-- Power menu -->
   <div class="power-menu" id="power-menu" hidden>
     <div class="power-card">
@@ -174,6 +196,7 @@
   <script src="assets/spotify-mock.js"></script>
   <script src="assets/spotify.js"></script>
   <script src="assets/lyrics.js"></script>
+  <script src="assets/spotify-search.js"></script>
   <script src="assets/home.js"></script>
   <script src="assets/smart-home.js"></script>
   <script src="assets/calendar.js"></script>

@@ -253,6 +253,11 @@ runs on another computer, use that computer's address instead of `127.0.0.1`
 
 ## Spotify notes
 
+**Search:** tap **Search** on the Spotify tab to search with the on-screen keyboard.
+Tap a song, album, artist or playlist to play it, or **+** to add a song to your queue.
+If nothing is playing anywhere, it starts on the first Spotify device that's online
+(your PC, phone, a speaker). Playing and queueing need Spotify Premium.
+
 - In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), the app's
   Redirect URI must be exactly `http://127.0.0.1:9090/`.
 - While the app is in Development mode, only accounts added under **User Management**
