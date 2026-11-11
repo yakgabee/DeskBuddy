@@ -271,6 +271,10 @@ runs on another computer, use that computer's address instead of `127.0.0.1`
 
 ## Spotify notes
 
+**Volume:** drag the slider next to the play buttons, or tap the speaker to mute. It
+changes the volume on whatever device Spotify is playing on. Some devices (like phones)
+don't let apps change their volume; then the slider is hidden.
+
 **Search:** tap **Search** on the Spotify tab to search with the on-screen keyboard.
 Tap a song, album, artist or playlist to play it, or **+** to add a song to your queue.
 If nothing is playing anywhere, it starts on the first Spotify device that's online

@@ -514,3 +514,17 @@ html, * { scrollbar-width: none; }
 .light-btn.on { background: #fff; color: #000; }
 .light-btn:disabled { opacity: 0.6; }
 .dev.light.lit .light-btn.on { background: #FFD60A; }
+
+/* ---------- Spotify volume ---------- */
+.volume { display: flex; align-items: center; gap: 6px; margin-left: 10px; min-width: 0; }
+.volume[hidden] { display: none; }
+.vol-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); flex-shrink: 0; }
+.vol-btn:hover { color: var(--text); background: var(--surface-2); }
+.vol-pct { font-family: var(--mono); font-size: 12px; color: var(--muted); width: 3ch; font-variant-numeric: tabular-nums; }
+.vol-slider { -webkit-appearance: none; appearance: none; width: clamp(90px, 14vw, 160px); height: 28px; background: transparent; touch-action: none; cursor: pointer; }
+.vol-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 999px;
+  background: linear-gradient(to right, var(--text) var(--vol, 50%), var(--surface-3) var(--vol, 50%)); }
+.vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+.vol-slider::-moz-range-track { height: 4px; border-radius: 999px; background: var(--surface-3); }
+.vol-slider::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--text); }
+.vol-slider::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; }

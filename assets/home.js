@@ -218,6 +218,7 @@
     $('btn-disconnect').hidden = DEMO || track.source === 'appletv' || !Spotify.isLoggedIn();
     $('btn-search').hidden = DEMO || !Spotify.isLoggedIn();
     renderProgress();
+    renderVolume();
     announce();
   }
 
@@ -314,6 +315,49 @@
     }
     setTimeout(pollSpotify, 500);
   }
+
+  // ---------- Volume (Spotify only; some devices, like phones, don't allow it) ----------
+  let volume = null;          // what the slider shows
+  let lastLoud = 50;          // volume to go back to after unmuting
+  let volHoldUntil = 0;       // ignore Spotify's (older) volume for a moment after a change
+  let volTimer = null, volSent = 0;
+  let demoVolume = 60;
+
+  function renderVolume() {
+    const show = track && (DEMO || (track.source === 'spotify' && track.supportsVolume));
+    $('volume').hidden = !show;
+    if (!show) return;
+    if (Date.now() > volHoldUntil) volume = DEMO ? demoVolume : track.volume;
+    if (volume > 0) lastLoud = volume;
+    if (document.activeElement !== $('vol-slider')) $('vol-slider').value = volume;
+    $('vol-slider').style.setProperty('--vol', `${volume}%`);
+    $('vol-pct').textContent = volume;
+    $('vol-btn').innerHTML = icon(volume === 0 ? 'mute' : volume < 50 ? 'volumeLow' : 'volume', 20);
+    $('vol-btn').setAttribute('aria-label', volume === 0 ? 'Unmute' : 'Mute');
+    $('volume').title = track.device ? `Volume on ${track.device}` : 'Volume';
+  }
+
+  // Send at most every 350 ms while dragging, plus the final value.
+  function setVolume(v, final) {
+    volume = Math.max(0, Math.min(100, Math.round(v)));
+    volHoldUntil = Date.now() + 4000;
+    renderVolume();
+    if (DEMO) { demoVolume = volume; return; }
+    clearTimeout(volTimer);
+    const wait = final ? 0 : Math.max(0, 350 - (Date.now() - volSent));
+    volTimer = setTimeout(async () => {
+      volSent = Date.now();
+      try {
+        await Spotify.setVolume(volume);
+      } catch (e) {
+        toast(e.code === 'premium' ? 'Volume control needs Spotify Premium (or this device doesn\'t allow it)' : 'Couldn\'t change the volume');
+        volHoldUntil = 0;
+      }
+    }, wait);
+  }
+  $('vol-slider').addEventListener('input', e => setVolume(Number(e.target.value), false));
+  $('vol-slider').addEventListener('change', e => { setVolume(Number(e.target.value), true); e.target.blur(); });
+  $('vol-btn').onclick = () => setVolume(volume === 0 ? lastLoud || 50 : 0, true);
 
   $('btn-play').onclick = () => control(track && track.playing ? 'pause' : 'play');
   $('btn-next').onclick = () => control('next');

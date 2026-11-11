@@ -71,6 +71,11 @@
                 <button class="ctrl" id="btn-prev" aria-label="Previous" data-icon="prev"></button>
                 <button class="ctrl play" id="btn-play" aria-label="Play/Pause"></button>
                 <button class="ctrl" id="btn-next" aria-label="Next" data-icon="next"></button>
+                <div class="volume" id="volume" hidden>
+                  <button class="vol-btn" id="vol-btn" aria-label="Mute"></button>
+                  <input class="vol-slider" id="vol-slider" type="range" min="0" max="100" step="1" aria-label="Volume">
+                  <span class="vol-pct" id="vol-pct"></span>
+                </div>
                 <button class="lyrics-btn" id="btn-lyrics"><span data-icon="lyrics" data-size="16"></span>Lyrics</button>
               </div>
             </div>

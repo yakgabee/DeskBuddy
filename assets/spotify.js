@@ -126,7 +126,8 @@
 
     // Returns null when nothing is playing.
     async nowPlaying() {
-      const d = await api('/me/player/currently-playing?additional_types=episode');
+      // /me/player = what's playing plus the device (for its volume).
+      const d = await api('/me/player?additional_types=episode');
       if (!d || !d.item) return null;
       const it = d.item;
       const isEp = it.type === 'episode';
@@ -141,6 +142,9 @@
         position: (d.progress_ms || 0) / 1000,
         playing: d.is_playing,
         isEpisode: isEp,
+        device: d.device?.name || null,
+        volume: d.device?.volume_percent ?? null,
+        supportsVolume: d.device ? d.device.supports_volume !== false && d.device.volume_percent != null : false,
       };
     },
 
@@ -148,6 +152,7 @@
     pause() { return api('/me/player/pause', 'PUT'); },
     next() { return api('/me/player/next', 'POST'); },
     previous() { return api('/me/player/previous', 'POST'); },
+    setVolume(percent) { return api(`/me/player/volume?volume_percent=${Math.round(percent)}`, 'PUT'); },
 
     // ---------- Search ----------
     async search(q) {
