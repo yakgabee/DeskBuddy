@@ -15,7 +15,7 @@ ask()  { local a; read -r -p "  $1${2:+ [$2]}: " a; echo "${a:-${2:-}}"; }
 yesno() { local a; read -r -p "  $1 [Y/n]: " a; [[ ! ${a:-} =~ ^[Nn] ]]; }
 noyes() { local a; read -r -p "  $1 [y/N]: " a; [[ ${a:-} =~ ^[Yy] ]]; }
 
-# Read a value from local-settings.json, e.g. setting wallpaper.agent
+# Read a value from local-settings.json, e.g. setting calendar.icloud.username
 setting() { python3 -c 'import json,sys
 v = json.load(open("local-settings.json"))
 for k in sys.argv[1].split("."): v = v.get(k) if isinstance(v, dict) else None
@@ -106,28 +106,8 @@ if [ -f local-settings.json ] && grep -q '"utorrent"' local-settings.json; then
   esac
 fi
 
-# ---------------------------------------------------------------- 3. Wallpaper
-bold "3. Wallpaper (your Wallpaper Engine wallpaper, from your PC)"
-WP=$(setting wallpaper.agent)
-if [ -z "$WP" ] || noyes "Wallpaper comes from $WP. Change it?"; then
-  WP=$(ask "Address of the DeskBuddy helper on your PC (type 'none' to skip)" "${WP:-http://10.0.10.132:9091}")
-  [ "$WP" = none ] && WP=""
-  WP="$WP" python3 -c 'import json,os; a=os.environ["WP"].rstrip("/"); print(json.dumps({"agent": a}) if a else "")' | save_section wallpaper
-fi
-if [ -n "$WP" ]; then
-  info=$(curl -s -m 5 -w '\n%{http_code}' "$WP/wallpaper/info")
-  case ${info##*$'\n'} in
-    200) ok "Found your wallpaper: $(echo "${info%$'\n'*}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("title","?"))')" ;;
-    404) warn "The PC helper answers, but no Wallpaper Engine wallpaper was found. Is Wallpaper Engine running?" ;;
-    *)   warn "Can't reach the PC helper at $WP. On your PC, run agent\\install-windows.bat (see README)." ;;
-  esac
-  if ! command -v ffmpeg >/dev/null && yesno "Install ffmpeg? (shrinks video wallpapers so they play smoothly)"; then
-    sudo apt-get install -y ffmpeg >/dev/null && ok "ffmpeg installed."
-  fi
-fi
-
-# ---------------------------------------------------------------- 4. Calendar
-bold "4. Calendar (iCloud)"
+# ---------------------------------------------------------------- 3. Calendar
+bold "3. Calendar (iCloud)"
 ICLOUD_USER=$(setting calendar.icloud.username)
 if [ -z "$ICLOUD_USER" ] || noyes "Calendar is connected to $ICLOUD_USER. Change it?"; then
   echo "  iCloud needs an app-specific password: appleid.apple.com → Sign-In and Security →"
@@ -161,8 +141,8 @@ except Exception as e: print("error")' 2>/dev/null)
   esac
 fi
 
-# ---------------------------------------------------------------- 5. Apple TV
-bold "5. Apple TV (what's playing + remote buttons)"
+# ---------------------------------------------------------------- 4. Apple TV
+bold "4. Apple TV (what's playing + remote buttons)"
 # srptools 2.x breaks pyatv's pairing ("SRPClientSession.__init__() takes 2
 # positional arguments"), so keep it below 2 until pyatv is updated.
 if [ -x .venv/bin/python ] && .venv/bin/python -c "import pyatv" 2>/dev/null; then
@@ -182,8 +162,8 @@ if [ -n "$ATV_HOST" ] && [ -x .venv/bin/python ] && .venv/bin/python -c "import 
   fi
 fi
 
-# ---------------------------------------------------------------- 6. Tailscale
-bold "6. Tailscale (for the Tailscale tab)"
+# ---------------------------------------------------------------- 5. Tailscale
+bold "5. Tailscale (for the Tailscale tab)"
 if command -v tailscale >/dev/null; then
   if tailscale status >/dev/null 2>&1; then ok "Tailscale is installed and signed in."
   elif yesno "Sign this Pi in to Tailscale now?"; then sudo tailscale up; fi
@@ -191,8 +171,8 @@ elif yesno "Install Tailscale on this Pi?"; then
   curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 fi
 
-# ---------------------------------------------------------------- 7. Autostart
-bold "7. Start DeskBuddy automatically when the Pi turns on"
+# ---------------------------------------------------------------- 6. Autostart
+bold "6. Start DeskBuddy automatically when the Pi turns on"
 LINE="$DIR/kiosk.sh &"
 added=0
 mkdir -p "$HOME/.config/labwc"
@@ -207,8 +187,8 @@ if [ -d "$HOME/.config/lxsession/LXDE-pi" ] && ! grep -qF "$DIR/kiosk.sh" "$HOME
 fi
 [ $added = 1 ] && ok "Added." || ok "Already set up."
 
-# ---------------------------------------------------------------- 8. Screen on
-bold "8. Keep the screen on (no blanking)"
+# ---------------------------------------------------------------- 7. Screen on
+bold "7. Keep the screen on (no blanking)"
 if command -v raspi-config >/dev/null; then
   if sudo raspi-config nonint do_blanking 1; then ok "Screen blanking turned off."
   else warn "Couldn't change it. Use: sudo raspi-config → Display Options → Screen Blanking → No"; fi

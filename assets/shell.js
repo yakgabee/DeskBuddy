@@ -1,4 +1,5 @@
-// The home screen: wallpaper, date, big clock, the line under it, and the Tabs sheet.
+// The frame around the tabs: date, big clock, the line under it, and going back
+// to the clock when nobody has touched the screen for a while.
 (() => {
   const $ = id => document.getElementById(id);
   const cfg = window.DESKBUDDY_CONFIG.clock || {};
@@ -18,45 +19,70 @@
   tick();
   setInterval(tick, 1000);
 
-  // ---------- Tabs sheet ----------
-  const sheet = $('sheet');
-  const IDLE_CLOSE = 2 * 60 * 1000; // back to the clock after 2 minutes untouched
+  // ---------- Tabs: keep the address in sync; back to the clock after 2 minutes ----------
+  const IDLE = 2 * 60 * 1000;
   let idleTimer;
-  const isOpen = () => sheet.classList.contains('open');
-  function resetIdle() {
-    clearTimeout(idleTimer);
-    if (isOpen()) idleTimer = setTimeout(() => {
-      if (!$('lyrics').classList.contains('open')) closeSheet();
-      else resetIdle();
-    }, IDLE_CLOSE);
-  }
-  function openSheet(tab) {
-    if (tab) DeskTabs.show(tab);
-    sheet.classList.add('open');
-    document.body.classList.add('sheet-open');
-    history.replaceState(null, '', `#${DeskTabs.current}`);
+  function onTab(name) {
+    document.body.classList.toggle('on-clock', name === 'clock');
+    history.replaceState(null, '', name === 'clock' ? location.pathname + location.search : `#${name}`);
     resetIdle();
   }
-  function closeSheet() {
-    sheet.classList.remove('open');
-    document.body.classList.remove('sheet-open');
-    history.replaceState(null, '', location.pathname + location.search);
+  function resetIdle() {
     clearTimeout(idleTimer);
+    if (DeskTabs.current !== 'clock') idleTimer = setTimeout(() => {
+      if ($('lyrics').classList.contains('open')) return resetIdle();
+      DeskTabs.show('clock');
+    }, IDLE);
   }
-  $('open-tabs').onclick = () => openSheet();
-  $('close-tabs').onclick = closeSheet;
-  $('downloads').onclick = () => openSheet('downloads');
-  window.addEventListener('deskbuddy:tab', e => { if (isOpen()) history.replaceState(null, '', `#${e.detail}`); });
+  window.addEventListener('deskbuddy:tab', e => onTab(e.detail));
   ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, resetIdle, { passive: true }));
-  if (DeskTabs.list.includes(location.hash.slice(1))) openSheet(location.hash.slice(1));
+  onTab(DeskTabs.current);
+  $('downloads').onclick = () => DeskTabs.show('downloads');
 
-  // Swipe up on the clock to open, swipe down on the sheet's top bar to close.
-  let startY = null;
-  $('screen').addEventListener('pointerdown', e => { startY = e.clientY; });
-  $('screen').addEventListener('pointerup', e => { if (startY !== null && startY - e.clientY > 60) openSheet(); startY = null; });
-  let sheetY = null;
-  sheet.querySelector('.sheet-top').addEventListener('pointerdown', e => { sheetY = e.clientY; });
-  sheet.querySelector('.sheet-top').addEventListener('pointerup', e => { if (sheetY !== null && e.clientY - sheetY > 60) closeSheet(); sheetY = null; });
+  // ---------- Power button: screen off, restart, shut down ----------
+  const menu = $('power-menu');
+  let armed = null; // restart / shut down need a second tap
+  function closeMenu() {
+    menu.hidden = true;
+    armed = null;
+    menu.querySelectorAll('[data-power]').forEach(b => {
+      b.classList.remove('confirm');
+      b.textContent = { screen: 'Turn screen off', reboot: 'Restart Pi', shutdown: 'Shut down Pi', cancel: 'Cancel' }[b.dataset.power];
+    });
+  }
+  $('power').onclick = () => { closeMenu(); menu.hidden = false; };
+  menu.addEventListener('click', async e => {
+    const b = e.target.closest('[data-power]');
+    if (!b) return closeMenu();               // tapped outside the menu
+    const act = b.dataset.power;
+    if (act === 'cancel') return closeMenu();
+    if (act === 'screen') {
+      closeMenu();
+      $('screen-off').hidden = false;
+      return;
+    }
+    if (armed !== act) {                       // first tap: ask to confirm
+      closeMenu();
+      menu.hidden = false;
+      armed = act;
+      b.classList.add('confirm');
+      b.textContent = act === 'reboot' ? 'Tap again to restart' : 'Tap again to shut down';
+      return;
+    }
+    b.textContent = act === 'reboot' ? 'Restarting…' : 'Shutting down…';
+    try {
+      const r = await fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: act }) });
+      if (!r.ok) throw new Error();
+    } catch (err) {
+      closeMenu();
+      const t = $('toast');
+      t.textContent = 'The Pi didn\'t allow that. See "Power button" in the README.';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 4000);
+    }
+  });
+  // Any tap wakes the screen (and doesn't also press whatever is underneath).
+  $('screen-off').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); $('screen-off').hidden = true; resetIdle(); });
 
   // ---------- The line under the clock: what's playing, what's next ----------
   const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -71,36 +97,6 @@
     $('glance-event').hidden = !ev;
     if (ev) $('glance-event').innerHTML = `${icon('calendar', 18)}<span>${esc(ev.when)} · ${esc(ev.title)}</span>`;
   });
-  $('glance-music').onclick = () => openSheet('spotify');
-  $('glance-event').onclick = () => openSheet('calendar');
-
-  // ---------- Wallpaper (your Wallpaper Engine wallpaper, synced from the PC) ----------
-  const img = $('wall-img'), video = $('wall-video');
-  let current = '';
-  async function loadWallpaper() {
-    let w;
-    try {
-      const r = await fetch('/api/wallpaper', { cache: 'no-store' });
-      w = r.ok ? await r.json() : null;
-    } catch (e) { return; } // keep whatever is showing
-    const key = w && w.state === 'ok' ? `${w.image || ''}|${w.video || ''}` : '';
-    if (key === current) return;
-    current = key;
-    if (!key) { img.classList.remove('shown'); video.classList.remove('shown'); video.removeAttribute('src'); return; }
-    if (w.image) {
-      img.onload = () => { img.classList.add('shown'); if (!w.video) video.classList.remove('shown'); };
-      img.src = w.image;
-    } else img.classList.remove('shown');
-    if (w.video) {
-      video.oncanplay = () => { video.classList.add('shown'); video.play().catch(() => {}); };
-      video.src = w.video;
-      video.load();
-    } else {
-      video.classList.remove('shown');
-      video.removeAttribute('src');
-      video.load();
-    }
-  }
-  loadWallpaper();
-  setInterval(loadWallpaper, 60 * 1000);
+  $('glance-music').onclick = () => DeskTabs.show('spotify');
+  $('glance-event').onclick = () => DeskTabs.show('calendar');
 })();

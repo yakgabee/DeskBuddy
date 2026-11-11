@@ -8,10 +8,10 @@
     "username": "admin",
     "password": "your-web-ui-password"
   },
-  "wallpaper": {
-    "agent": "http://10.0.10.132:9091"
-  },
   "calendar": {
-    "icloud": { "username": "you@icloud.com", "appPassword": "abcd-efgh-ijkl-mnop" }
+    "icloud": {
+      "username": "you@icloud.com",
+      "appPassword": "abcd-efgh-ijkl-mnop"
+    }
   }
 }

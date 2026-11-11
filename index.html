@@ -12,15 +12,7 @@
   <script src="assets/kiosk.js"></script>
 </head>
 <body class="home">
-  <!-- Background: your Wallpaper Engine wallpaper (synced from your PC) -->
-  <div class="wall" id="wall">
-    <img id="wall-img" alt="">
-    <video id="wall-video" muted loop playsinline preload="auto"></video>
-    <div class="wall-shade"></div>
-  </div>
-
-  <!-- Home: date, big clock, Tabs -->
-  <main class="screen" id="screen">
+  <main class="app">
     <header class="topbar">
       <div class="date" id="date"></div>
       <div class="top-right">
@@ -28,39 +20,25 @@
           <span class="wx-icon" id="wx-icon"></span><span class="wx-temp" id="wx-temp"></span>
           <span class="wx-cond" id="wx-cond"></span><span class="wx-range" id="wx-range" hidden></span>
         </div>
-        <button class="dl-badge" id="downloads" hidden aria-label="Downloads">
-          <span id="dl-pct"></span>
-          <svg class="dl-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#fff"/><path d="M24 11v22M14 24l10 10 10-10" fill="none" stroke="#000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button class="dl-badge" id="downloads" hidden aria-label="Downloads">↓ <span id="dl-pct"></span></button>
+        <div class="sh-clock" id="sh-clock"></div>
+        <button class="power-btn" id="power" aria-label="Power">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#fff"/><path d="M24 12v12" stroke="#000" stroke-width="4.5" stroke-linecap="round"/><path d="M16.2 17.5a11 11 0 1 0 15.6 0" fill="none" stroke="#000" stroke-width="4.5" stroke-linecap="round"/></svg>
         </button>
       </div>
     </header>
     <div class="rule"></div>
-    <section class="clock-zone">
-      <div class="big-clock" id="time">--:--</div>
-      <div class="glance">
-        <button id="glance-music" hidden></button>
-        <button id="glance-event" hidden></button>
-      </div>
-    </section>
-    <div class="rule"></div>
-    <button class="tabs-toggle" id="open-tabs">Tabs</button>
-  </main>
 
-  <!-- Tabs -->
-  <section class="sheet" id="sheet" aria-label="Tabs">
-    <header class="sheet-top">
-      <nav class="tabs" id="tabs" role="tablist">
-        <button class="tab" data-tab="spotify" role="tab"><span class="tab-logo" data-logo="spotify"></span><span class="tab-label">Spotify</span></button>
-        <button class="tab" data-tab="devices" role="tab"><span class="tab-logo" data-logo="devices"></span><span class="tab-label">Devices</span><span class="count" id="tab-devices"></span></button>
-        <button class="tab" data-tab="servers" role="tab"><span class="tab-logo" data-logo="servers"></span><span class="tab-label">Servers</span><span class="count" id="tab-servers"></span></button>
-        <button class="tab" data-tab="downloads" role="tab"><span class="tab-logo" data-logo="downloads"></span><span class="tab-label">Downloads</span><span class="count" id="tab-downloads"></span></button>
-        <button class="tab" data-tab="tailscale" role="tab"><span class="tab-logo" data-logo="tailscale"></span><span class="tab-label">Tailscale</span><span class="count" id="tab-tailscale"></span></button>
-        <button class="tab" data-tab="calendar" role="tab"><span class="tab-logo" data-logo="calendar"></span><span class="tab-label">Calendar</span><span class="count" id="tab-calendar"></span></button>
-      </nav>
-      <div class="sh-clock" id="sh-clock"></div>
-    </header>
-    <div class="rule"></div>
-    <div class="sheet-body">
+    <div class="stage">
+      <!-- Clock (home) -->
+      <section class="panel clock-zone" id="panel-clock" role="tabpanel">
+        <div class="big-clock" id="time">--:--</div>
+        <div class="glance">
+          <button id="glance-music" hidden></button>
+          <button id="glance-event" hidden></button>
+        </div>
+      </section>
+
       <!-- Spotify (or the Apple TV when Spotify isn't playing) -->
       <section class="panel" id="panel-spotify" role="tabpanel">
         <section class="now-playing card is-empty" id="now-playing">
@@ -140,9 +118,18 @@
         <div class="agenda" id="agenda"></div>
       </section>
     </div>
+
     <div class="rule"></div>
-    <button class="tabs-toggle" id="close-tabs">Clock</button>
-  </section>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab" data-tab="clock" role="tab"><span class="tab-logo" data-logo="clock"></span><span class="tab-label">Clock</span></button>
+      <button class="tab" data-tab="spotify" role="tab"><span class="tab-logo" data-logo="spotify"></span><span class="tab-label">Spotify</span></button>
+      <button class="tab" data-tab="devices" role="tab"><span class="tab-logo" data-logo="devices"></span><span class="tab-label">Devices</span><span class="count" id="tab-devices"></span></button>
+      <button class="tab" data-tab="servers" role="tab"><span class="tab-logo" data-logo="servers"></span><span class="tab-label">Servers</span><span class="count" id="tab-servers"></span></button>
+      <button class="tab" data-tab="downloads" role="tab"><span class="tab-logo" data-logo="downloads"></span><span class="tab-label">Downloads</span><span class="count" id="tab-downloads"></span></button>
+      <button class="tab" data-tab="tailscale" role="tab"><span class="tab-logo" data-logo="tailscale"></span><span class="tab-label">Tailscale</span><span class="count" id="tab-tailscale"></span></button>
+      <button class="tab" data-tab="calendar" role="tab"><span class="tab-logo" data-logo="calendar"></span><span class="tab-label">Calendar</span><span class="count" id="tab-calendar"></span></button>
+    </nav>
+  </main>
 
   <!-- Lyrics overlay -->
   <div class="lyrics" id="lyrics" role="dialog" aria-label="Lyrics">
@@ -153,6 +140,17 @@
     </div>
     <div class="lyrics-body" id="lyrics-body"></div>
   </div>
+
+  <!-- Power menu -->
+  <div class="power-menu" id="power-menu" hidden>
+    <div class="power-card">
+      <button class="power-item" data-power="screen">Turn screen off</button>
+      <button class="power-item" data-power="reboot">Restart Pi</button>
+      <button class="power-item danger" data-power="shutdown">Shut down Pi</button>
+      <button class="power-item muted" data-power="cancel">Cancel</button>
+    </div>
+  </div>
+  <div class="screen-off" id="screen-off" hidden></div>
 
   <div class="toast" id="toast" role="status"></div>
 

@@ -10,26 +10,23 @@
   };
 
   // ---------- Tabs ----------
-  const TABS = ['spotify', 'devices', 'servers', 'downloads', 'tailscale', 'calendar'];
+  const TABS = ['clock', 'spotify', 'devices', 'servers', 'downloads', 'tailscale', 'calendar'];
   let currentTab = null;
   function showTab(name) {
-    if (!TABS.includes(name)) name = 'spotify';
+    if (!TABS.includes(name)) name = 'clock';
     currentTab = name;
     document.querySelectorAll('.tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === name);
       t.setAttribute('aria-selected', t.dataset.tab === name);
     });
     TABS.forEach(t => { const p = $(`panel-${t}`); if (p) p.hidden = t !== name; });
-    try { localStorage.setItem('deskbuddy.tab', name); } catch (e) {}
     window.dispatchEvent(new CustomEvent('deskbuddy:tab', { detail: name }));
   }
   $('tabs').addEventListener('click', e => {
     const t = e.target.closest('[data-tab]');
     if (t) showTab(t.dataset.tab);
   });
-  let savedTab = null;
-  try { savedTab = localStorage.getItem('deskbuddy.tab'); } catch (e) {}
-  showTab(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : savedTab);
+  showTab(location.hash.slice(1));   // starts on the clock unless the address names a tab
   window.DeskTabs = { show: showTab, list: TABS, get current() { return currentTab; } };
 
   // ---------- Devices (computer, Apple TV, …) ----------

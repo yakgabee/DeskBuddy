@@ -2,15 +2,23 @@
 
 A desk / wall display for a Raspberry Pi with a 7-inch screen.
 
-**Home screen:** your Wallpaper Engine wallpaper fills the screen, with the date,
-a big clock, the weather, what's playing and your next event. A download badge
-appears top-right while something downloads.
+A solid grey screen with the date and weather along the top and a row of tabs
+along the bottom:
 
-**Tabs** (tap "Tabs" or swipe up): Spotify (with synced lyrics, or the Apple TV
-when Spotify isn't playing), Devices (computer, Apple TV with remote), Servers
-(Jellyfin, RAM/storage of your server), Downloads (uTorrent), Tailscale and
-Calendar (iCloud). Tap "Clock" or swipe down to go back; it also returns to the
-clock by itself after 2 minutes.
+- **Clock:** a big clock, what's playing and your next event.
+- **Spotify:** now playing with synced lyrics (or the Apple TV when Spotify isn't playing).
+- **Devices:** your computer and Apple TV (with remote buttons).
+- **Servers:** Jellyfin, and your server's RAM and storage.
+- **Downloads:** uTorrent (a download badge also appears top-right while downloading).
+- **Tailscale:** devices on your tailnet.
+- **Calendar:** your iCloud calendar.
+
+It goes back to the Clock tab by itself after 2 minutes.
+
+The **power button** (top right) can turn the screen off (tap anywhere to wake
+it), restart the Pi or shut it down. Restart and shut down ask you to tap twice.
+They use `systemctl` or passwordless `sudo`, which Raspberry Pi OS allows for its
+first user by default; if the Pi says it isn't allowed, run DeskBuddy as that user.
 
 ## Run it
 
@@ -80,32 +88,9 @@ Everything lives in [`assets/config.js`](assets/config.js):
 - **Servers:** the list shown on the Servers tab. Jellyfin servers also show
   their name and version.
 
-## Wallpaper (from Wallpaper Engine)
-
-The background is whatever wallpaper Wallpaper Engine is showing on your PC. A
-small helper on the PC shares it with the Pi; the Pi checks every minute and
-updates when you change it.
-
-- **Video wallpapers** play as video. Big ones (4K, HEVC) are re-encoded on the Pi
-  to 1280 px H.264 so they play smoothly (needs `ffmpeg`; `setup-pi.sh` installs it).
-  The preview image shows while that happens.
-- **Scene and web wallpapers** can't run on a Pi, so their preview image is used
-  (often an animated GIF).
-- If the PC is off, the last wallpaper stays.
-
-**On the PC** (needs [Python 3](https://www.python.org/downloads/), tick
-"Add python.exe to PATH"): double-click `agent\install-windows.bat`. It installs the
-helper, starts it now and at every login, allows it through Windows Firewall for
-your home network only, and shows the address to use on the Pi.
-
-**On the Pi:** run `./setup-pi.sh` and enter that address (e.g.
-`http://10.0.10.132:9091`). It's saved as `"wallpaper": {"agent": "…"}` in
-`local-settings.json`; add `"mode": "still"` there to always use a still image
-(less work for the Pi).
-
 ## Calendar (iCloud)
 
-The Calendar tab shows the next two weeks, and the home screen shows what's next.
+The Calendar tab shows the next two weeks, and the Clock tab shows what's next.
 
 1. Make an **app-specific password**: [appleid.apple.com](https://appleid.apple.com)
    → Sign-In and Security → App-Specific Passwords → **+** (name it "DeskBuddy").

@@ -5,6 +5,11 @@
   const LOGOS = {
     spotify: () => `<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1ED760"/>
       <path d="M6.3 9.2c3.9-1.2 8.3-.8 11.6 1.1M7 12.4c3.3-1 6.9-.6 9.7 1M7.8 15.4c2.7-.7 5.4-.5 7.6.8" fill="none" stroke="#000" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+    clock: () => {
+      const now = new Date(), h = (now.getHours() % 12 + now.getMinutes() / 60) * 30, m = now.getMinutes() * 6;
+      const hand = (deg, len, w) => `<line x1="12" y1="12" x2="${12 + len * Math.sin(deg * Math.PI / 180)}" y2="${12 - len * Math.cos(deg * Math.PI / 180)}" stroke="#000" stroke-width="${w}" stroke-linecap="round"/>`;
+      return tile('#fff', `<circle cx="12" cy="12" r="8.6" fill="none" stroke="#000" stroke-width="1.4"/>${hand(h, 4.6, 1.8)}${hand(m, 6.6, 1.4)}<circle cx="12" cy="12" r="1.1" fill="#000"/>`);
+    },
     devices: () => tile('#0A84FF', `<path d="M5.5 11 12 5.5l6.5 5.5v7a1 1 0 0 1-1 1h-3.5v-4.5h-4V19H6.5a1 1 0 0 1-1-1z" ${stroke}/>`),
     servers: () => tile('#5E5CE6', `<rect x="5.5" y="5.5" width="13" height="5" rx="1.3" ${stroke}/><rect x="5.5" y="13.5" width="13" height="5" rx="1.3" ${stroke}/><path d="M8.5 8h.01M8.5 16h.01" ${stroke}/>`),
     downloads: () => tile('#76B83F', `<text x="12" y="17.3" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#fff">µ</text>`),
@@ -23,5 +28,5 @@
   window.logo = name => (LOGOS[name] ? LOGOS[name]() : '');
   const fill = () => document.querySelectorAll('[data-logo]').forEach(el => { el.innerHTML = logo(el.dataset.logo); });
   fill();
-  setInterval(fill, 10 * 60 * 1000); // keeps the calendar's date current
+  setInterval(fill, 60 * 1000); // keeps the clock and the calendar's date current
 })();
