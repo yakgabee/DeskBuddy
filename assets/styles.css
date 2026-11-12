@@ -512,7 +512,8 @@ html, * { scrollbar-width: none; }
 .light-btns { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
 .light-btn { flex: 1; min-width: 64px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: #48484a; color: var(--text); font-size: 15px; font-weight: 600; }
 .light-btn.on { background: #fff; color: #000; }
-.light-btn:disabled { opacity: 0.6; }
+.light-btn { transition: transform 0.1s, background 0.2s; touch-action: manipulation; }
+.light-btn:active { transform: scale(0.95); }
 .dev.light.lit .light-btn.on { background: #FFD60A; }
 
 /* ---------- Spotify volume ---------- */

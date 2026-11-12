@@ -10,7 +10,8 @@
     unreachable: 'Couldn\'t reach Voice Monkey. Check the internet connection.',
   };
   let lights = null;
-  let busy = null;   // "light:action" being sent
+  const pending = {};   // light index -> { seq, last } while a tap is still being sent
+  let seq = 0;
 
   const time = s => new Date(s * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   function lastText(last, actions) {
@@ -33,8 +34,7 @@
             <div class="dev-icon">${icon('light', 28)}</div>
             <div class="grow"><div class="dev-name">${esc(l.name)}</div><div class="dev-sub">${esc(lastText(l.last, l.actions))}</div></div>
           </div>
-          <div class="light-btns">${l.actions.map(a => `<button class="light-btn ${a.id}" data-light="${i}" data-action="${esc(a.id)}"
-            ${busy ? 'disabled' : ''}>${busy === `${i}:${a.id}` ? '…' : esc(a.label)}</button>`).join('')}</div>
+          <div class="light-btns">${l.actions.map(a => `<button class="light-btn ${a.id}" data-light="${i}" data-action="${esc(a.id)}">${esc(a.label)}</button>`).join('')}</div>
         </article>`;
       }).join('')}</div>`;
   }
@@ -44,32 +44,42 @@
       const r = await fetch('/api/lights', { cache: 'no-store' });
       const d = await r.json();
       lights = d.lights || null;
+      // Keep showing a tap that's still on its way to Alexa.
+      (lights || []).forEach((l, i) => { if (pending[i]) l.last = pending[i].last; });
     } catch (e) { /* not running under server.py */ }
     render();
   }
 
+  // The card changes right away; the request goes to Voice Monkey in the background,
+  // and only a failure shows a message (and puts the card back).
   $('lights').addEventListener('click', async e => {
     const b = e.target.closest('[data-action]');
-    if (!b || busy) return;
-    busy = `${b.dataset.light}:${b.dataset.action}`;
+    if (!b || !lights) return;
+    const i = Number(b.dataset.light), action = b.dataset.action;
+    const before = lights[i].last;
+    const mine = ++seq;
+    lights[i].last = { action, at: Date.now() / 1000 };
+    pending[i] = { seq: mine, last: lights[i].last };
     render();
     let error = null;
     try {
       const r = await fetch('/api/lights', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ light: Number(b.dataset.light), action: b.dataset.action }),
+        body: JSON.stringify({ light: i, action }),
       });
       const d = await r.json();
       if (!d.ok) error = d.error;
     } catch (err) { error = 'unreachable'; }
-    busy = null;
+    if (pending[i]?.seq !== mine) return;      // a newer tap on this light took over
+    delete pending[i];
     if (error) {
+      lights[i].last = before;
+      render();
       const t = $('toast');
       t.textContent = ERRORS[error] || ERRORS.unreachable;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 4000);
     }
-    load();
   });
 
   load();
