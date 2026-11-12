@@ -94,25 +94,20 @@
     return null;
   }
 
-  // The app's real icon (looked up by server.py and cached on the Pi); if there's none,
-  // the tile keeps showing the app's name.
-  const iconUrl = app => `/api/appletv/icon?${new URLSearchParams({ id: app.id, name: app.name })}`;
-  const iconImg = (app, cls) => `<img class="${cls}" src="${esc(iconUrl(app))}" alt="" onload="this.parentNode.classList.add('has-icon')" onerror="this.remove()">`;
-
   function renderApps() {
     $('rm-apps').innerHTML = FAVORITES.map((f, i) => {
       const app = findApp(f);
       const missing = apps && !app;
       return `<button class="rm-app ${missing ? 'missing' : ''}" data-fav="${i}" ${missing ? 'disabled' : ''}
           style="--app:${esc(f.color || '#48484a')};--app-text:${esc(f.text || '#fff')}">
-        <span class="rm-app-tile">${app ? iconImg(app, 'rm-app-icon') : ''}<span class="rm-app-name">${esc(f.name)}</span></span>
+        <span class="rm-app-tile">${esc(f.name)}</span>
         <small>${missing ? 'Not installed' : apps ? esc(app.name) : appsError ? 'Tap to retry' : 'Loading…'}</small>
       </button>`;
     }).join('');
     $('rm-allapps').innerHTML = apps
       ? `<button class="sr-back" data-back>${icon('arrowLeft', 18)}Back to remote</button>
          <div class="sr-head">All apps on the Apple TV</div><div class="rm-applist">${apps.map((a, i) =>
-          `<button class="chip rm-appchip" data-app="${i}">${iconImg(a, 'rm-chip-icon')}${esc(a.name)}</button>`).join('')}</div>`
+          `<button class="chip" data-app="${i}">${esc(a.name)}</button>`).join('')}</div>`
       : `<button class="sr-back" data-back>${icon('arrowLeft', 18)}Back to remote</button>
          <p class="search-msg">${appsError ? 'Couldn\'t load the apps.' : 'Loading apps…'}</p>`;
   }

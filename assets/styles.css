@@ -607,13 +607,6 @@ html.dragging, html.dragging * { user-select: none; cursor: grabbing; }
 .remote .osk[hidden] { display: none; }
 .remote.typing .rm-search { box-shadow: 0 0 0 2px var(--spotify); }
 .remote.asleep .dpad, .remote.asleep .rm-keys { opacity: 0.5; }
-/* Real app icons on the remote's app tiles */
-.rm-app-tile { position: relative; overflow: hidden; }
-.rm-app-icon { height: 72%; aspect-ratio: 1; border-radius: 22%; object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-.rm-app-tile.has-icon .rm-app-name { display: none; }
-.rm-app-tile:not(.has-icon) .rm-app-icon { position: absolute; opacity: 0; }
-.rm-appchip { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px !important; }
-.rm-chip-icon { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
 /* NBA tab: the league logo on a white tile, over the basketball until it loads */
 .logo-img { position: relative; width: 24px; height: 24px; display: block; }
 .logo-img img { position: absolute; inset: 0; width: 24px; height: 24px; object-fit: contain; padding: 2px; background: #fff; border-radius: 6px; opacity: 0; }

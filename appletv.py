@@ -57,6 +57,7 @@ class AppleTVClient:
         self.failed_at = {}     # host -> (time, state) of the last failed connect
         self.artwork = None     # (artwork_id, bytes, mimetype)
         self.app_cache = {}     # host -> (time, [{"name", "id"}])
+        self.confs = {}         # host -> the Apple TV's details from the last scan
 
     # Called by pyatv when the connection drops.
     def connection_lost(self, exception):
@@ -87,12 +88,26 @@ class AppleTVClient:
         try:
             storage = FileStorage.default_storage(self.loop)
             await storage.load()
+            # Reconnecting? Use the details from last time instead of searching the
+            # network again (that search alone can take 5 seconds).
+            if host in self.confs:
+                try:
+                    self.atv = await asyncio.wait_for(pyatv.connect(self.confs[host], self.loop, storage=storage), 8)
+                except Exception:
+                    self.confs.pop(host, None)
+                    self.atv = None
+            if self.atv:
+                self.atv.listener = self
+                self.host = host
+                self.failed_at.pop(host, None)
+                return self.atv
             confs = await pyatv.scan(self.loop, hosts=[host], timeout=5, storage=storage)
             if not confs:
                 raise Unreachable()
             if needs_pairing(confs[0]):
                 raise NotPaired()
             self.atv = await pyatv.connect(confs[0], self.loop, storage=storage)
+            self.confs[host] = confs[0]
         except (NotPaired, Unreachable) as e:
             self.failed_at[host] = (time.time(), type(e))
             raise
