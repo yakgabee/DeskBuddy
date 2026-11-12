@@ -71,6 +71,15 @@ class AppleTVClient:
     async def _connect(self, host):
         if self.atv and self.host == host:
             return self.atv
+        # Only connecting is one-at-a-time (two requests mustn't both open a connection).
+        if self.lock is None:
+            self.lock = asyncio.Lock()
+        async with self.lock:
+            if self.atv and self.host == host:
+                return self.atv
+            return await self._open(host)
+
+    async def _open(self, host):
         failed = self.failed_at.get(host)
         if failed and time.time() - failed[0] < RETRY_AFTER_FAILURE:
             raise failed[1]()
@@ -103,11 +112,10 @@ class AppleTVClient:
                 pass
         self.atv = None
 
-    async def _locked(self, fn):
-        if self.lock is None:
-            self.lock = asyncio.Lock()
-        async with self.lock:
-            return await fn()
+    async def _locked(self, fn, timeout=10):
+        # Requests on an open connection run side by side, each with its own time
+        # limit, so a slow one (like listing apps) can't hold up status or buttons.
+        return await asyncio.wait_for(fn(), timeout)
 
     # ---------- status ----------
     async def _status(self, host):
@@ -158,7 +166,7 @@ class AppleTVClient:
         if pyatv is None:
             return {"state": "not_installed"}
         try:
-            return self.run(self._locked(lambda: self._status(host)))
+            return self.run(self._locked(lambda: self._status(host), 12), 15)
         except Exception:
             return {"state": "unreachable"}
 
@@ -177,7 +185,7 @@ class AppleTVClient:
         if pyatv is None:
             return None
         try:
-            return self.run(self._locked(lambda: self._artwork(host, artwork_id)))
+            return self.run(self._locked(lambda: self._artwork(host, artwork_id), 15), 18)
         except Exception:
             return None
 
@@ -200,7 +208,7 @@ class AppleTVClient:
         if pyatv is None:
             return {"error": "not_installed"}
         try:
-            self.run(self._locked(lambda: self._command(host, action)))
+            self.run(self._locked(lambda: self._command(host, action), 8), 10)
             return {"ok": True}
         except NotPaired:
             return {"error": "not_paired"}
@@ -224,7 +232,7 @@ class AppleTVClient:
         if pyatv is None:
             return {"error": "not_installed"}
         try:
-            return {"apps": self.run(self._locked(lambda: self._apps(host)))}
+            return {"apps": self.run(self._locked(lambda: self._apps(host), 25), 28)}
         except NotPaired:
             return {"error": "not_paired"}
         except Exception:
@@ -234,14 +242,14 @@ class AppleTVClient:
         if pyatv is None:
             return {"error": "not_installed"}
         try:
-            known = {a["id"] for a in self.run(self._locked(lambda: self._apps(host)))}
+            known = {a["id"] for a in self.run(self._locked(lambda: self._apps(host), 25), 28)}
             if app_id not in known:
                 return {"error": "unknown_app"}
 
             async def go():
                 atv = await self._connect(host)
                 await atv.apps.launch_app(app_id)
-            self.run(self._locked(go))
+            self.run(self._locked(go, 12), 14)
             return {"ok": True}
         except NotPaired:
             return {"error": "not_paired"}
@@ -260,7 +268,7 @@ class AppleTVClient:
             else:
                 await atv.keyboard.text_clear()
         try:
-            self.run(self._locked(go))
+            self.run(self._locked(go, 8), 10)
             return {"ok": True}
         except NotPaired:
             return {"error": "not_paired"}

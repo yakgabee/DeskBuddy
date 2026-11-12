@@ -106,7 +106,7 @@
       return `<button class="rm-app ${missing ? 'missing' : ''}" data-fav="${i}" ${missing ? 'disabled' : ''}
           style="--app:${esc(f.color || '#48484a')};--app-text:${esc(f.text || '#fff')}">
         <span class="rm-app-tile">${app ? iconImg(app, 'rm-app-icon') : ''}<span class="rm-app-name">${esc(f.name)}</span></span>
-        <small>${missing ? 'Not installed' : apps ? esc(app.name) : appsError ? '' : '…'}</small>
+        <small>${missing ? 'Not installed' : apps ? esc(app.name) : appsError ? 'Tap to retry' : 'Loading…'}</small>
       </button>`;
     }).join('');
     $('rm-allapps').innerHTML = apps
@@ -117,8 +117,15 @@
          <p class="search-msg">${appsError ? 'Couldn\'t load the apps.' : 'Loading apps…'}</p>`;
   }
 
-  async function loadApps() {
-    if (apps) return;
+  let loadingApps = null;
+  function loadApps() {
+    if (apps) return Promise.resolve();
+    if (!loadingApps) loadingApps = fetchApps().finally(() => { loadingApps = null; });
+    return loadingApps;
+  }
+  async function fetchApps() {
+    appsError = null;
+    renderApps();
     try {
       const r = await fetch(`/api/appletv/apps?${new URLSearchParams({ host })}`, { cache: 'no-store' });
       const d = await r.json();
@@ -138,7 +145,16 @@
 
   $('rm-apps').addEventListener('click', e => {
     const b = e.target.closest('[data-fav]');
-    if (b) launch(findApp(FAVORITES[Number(b.dataset.fav)]));
+    if (!b) return;
+    const fav = FAVORITES[Number(b.dataset.fav)];
+    if (apps) return launch(findApp(fav));
+    // The app list isn't here yet: get it, then open the app.
+    toast(`Opening ${fav.name}…`);
+    loadApps().then(() => {
+      const app = findApp(fav);
+      if (app) launch(app);
+      else toast(apps ? `${fav.name} isn't installed on the Apple TV` : 'Couldn\'t get the app list from the Apple TV. Try again.');
+    });
   });
   $('rm-allapps').addEventListener('click', e => {
     const b = e.target.closest('[data-app]');
@@ -223,8 +239,13 @@
     renderHint();
   }
 
+  // One slow or failed check doesn't mean the Apple TV is gone: keep showing the last
+  // good status until two checks in a row fail.
+  let misses = 0;
   async function refresh() {
-    status = await DeskAppleTV.status(host);
+    const s = await DeskAppleTV.status(host);
+    if (s.state === 'ok' || !status || status.state !== 'ok' || ++misses >= 2) { status = s; }
+    if (s.state === 'ok') misses = 0;
     render();
   }
 
