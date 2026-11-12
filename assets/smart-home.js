@@ -89,9 +89,21 @@
   // The Apple TV counts as online whenever pyatv can talk to it.
   const effective = () => devices.map(d => d.appletv && atv && atv.state === 'ok' ? { ...d, status: 'online' } : d);
 
+  // Don't swap the cards while a finger is on them: the tap would land on a button
+  // that no longer exists and do nothing. Render once the finger is up instead.
+  let pressing = false, renderLater = false, lastHtml = '';
+  $('devices').addEventListener('pointerdown', () => { pressing = true; }, true);
+  const release = () => setTimeout(() => {
+    pressing = false;
+    if (renderLater) { renderLater = false; renderDevices(); }
+  }, 250);
+  document.addEventListener('pointerup', release, true);
+  document.addEventListener('pointercancel', release, true);
+
   function renderDevices() {
+    if (pressing) { renderLater = true; return; }
     const devices = effective();
-    $('devices').innerHTML = devices.length ? devices.map(d => {
+    const html = devices.length ? devices.map(d => {
       if (d.appletv && d.host) return appleTvCard(d);
       const statusClass = d.status === 'online' ? 'up' : d.status === 'offline' ? 'down' : 'checking';
       return `<article class="dev card ${d.status}">
@@ -103,6 +115,7 @@
           : 'Add its IP address in <code>assets/config.js</code>'}</div>
       </article>`;
     }).join('') : '<p class="ts-empty">No devices yet. Add them in <code>assets/config.js</code>.</p>';
+    if (html !== lastHtml) { $('devices').innerHTML = html; lastHtml = html; }
     const sum = DeskDevices.summary(devices);
     const done = devices.every(d => d.status !== 'checking');
     if (done) {

@@ -3,8 +3,8 @@
 // scrollable list (with a little momentum), and a drag never counts as a tap.
 // Real touch and the mouse wheel keep working as normal.
 (() => {
-  const THRESHOLD = 8;        // px of movement before a press becomes a drag
-  const SKIP = 'input, textarea, select, .osk, .vol-slider, .progress-bar';
+  const THRESHOLD = 22;       // px of movement before a press becomes a drag (a finger wobbles a bit on a tap)
+  const SKIP = 'input, textarea, select, .osk, .vol-slider, .progress-bar, .dpad';
   let press = null;           // { id, x, y, el, axis, dragging, samples }
   let glide = null;
   let swallowClick = false;

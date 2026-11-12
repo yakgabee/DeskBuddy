@@ -51,8 +51,12 @@
         reboot: 'Restart Pi', shutdown: 'Shut down Pi', cancel: 'Cancel' }[b.dataset.power];
     });
   }
-  $('power').onclick = () => { closeMenu(); menu.hidden = false; };
+  let openedAt = 0;
+  $('power').onclick = () => { closeMenu(); menu.hidden = false; openedAt = Date.now(); };
   menu.addEventListener('click', async e => {
+    // Some touchscreens send a second click right after the first; don't let it
+    // close (or press something in) the menu that just opened.
+    if (Date.now() - openedAt < 400) return;
     const b = e.target.closest('[data-power]');
     if (!b) return closeMenu();               // tapped outside the menu
     const act = b.dataset.power;
