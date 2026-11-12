@@ -199,6 +199,9 @@ Tap the Apple TV's name (or **Remote**) on the Devices tab to open a full-screen
 - **App buttons:** YouTube, Spotify, Jellyfin, TSN and Sportsnet open on the TV (matched by
   name with the apps installed; Jellyfin also matches Swiftfin). Change them under
   `appletvApps` in `assets/config.js`. **All apps** lists everything installed.
+  Each app shows its real icon, which the Pi looks up on Apple's public App Store lookup
+  the first time and keeps in `.cache/app-icons` (not in git). Apps without an icon there
+  show their name instead.
 - **Type on the TV:** open a search box on the TV (e.g. YouTube's search), then type in the
   bar at the top with the on-screen keyboard; the text appears on the TV as you type.
 

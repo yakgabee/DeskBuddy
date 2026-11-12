@@ -11,6 +11,7 @@ back to) and adds:
   GET /api/appletv?host=          ->  Apple TV: awake/asleep and what's playing
   GET /api/appletv/artwork?host=  ->  artwork for what's playing
   GET /api/appletv/apps?host=     ->  apps installed on the Apple TV
+  GET /api/appletv/icon?id=&name= ->  an app's real icon (App Store lookup, cached in .cache)
   POST /api/appletv               ->  {"host", "action"}: remote buttons (play_pause, up, select, home, …),
                                       {"action": "launch", "app": id}, {"action": "text", "text": "…"}
   GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
@@ -622,6 +623,76 @@ class Lights:
 lights = Lights()
 
 
+# ---------- App icons for the Apple TV remote ----------
+# The real icons, looked up on Apple's public App Store lookup by each app's bundle ID
+# (or name), downloaded once and kept in .cache/app-icons. Nothing is stored in git.
+ITUNES_URL = os.environ.get("DESKBUDDY_ITUNES_URL", "https://itunes.apple.com")
+ICON_DIR = os.path.join(ROOT, ".cache", "app-icons")
+BUNDLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,150}$")
+
+
+class AppIcons:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.misses = {}   # bundle id -> time of a failed lookup (retry after a day)
+
+    def _lookup(self, bundle, name):
+        """URL of the app's icon, or None."""
+        def art(r):
+            return r.get("artworkUrl512") or r.get("artworkUrl100") or r.get("artworkUrl60")
+        for extra in ("", "&entity=tvSoftware"):
+            try:
+                d = fetch_json(f"{ITUNES_URL}/lookup?{urllib.parse.urlencode({'bundleId': bundle, 'country': 'CA'})}{extra}", timeout=8)
+            except (urllib.error.URLError, OSError, ValueError):
+                return None
+            for r in d.get("results") or []:
+                if art(r):
+                    return art(r)
+        if name:   # some tvOS apps have their own bundle ID: search by name, but only accept a close match
+            try:
+                d = fetch_json(f"{ITUNES_URL}/search?{urllib.parse.urlencode({'term': name, 'entity': 'tvSoftware', 'country': 'CA', 'limit': 5})}", timeout=8)
+            except (urllib.error.URLError, OSError, ValueError):
+                return None
+            want = re.sub(r"[^a-z0-9]", "", name.lower())
+            for r in d.get("results") or []:
+                got = re.sub(r"[^a-z0-9]", "", str(r.get("trackName", "")).lower())
+                if (r.get("bundleId") == bundle or got.startswith(want)) and art(r):
+                    return art(r)
+        return None
+
+    def get(self, bundle, name=""):
+        """(bytes, mimetype) of the icon, or None."""
+        if not BUNDLE_ID.match(bundle or ""):
+            return None
+        path = os.path.join(ICON_DIR, bundle + ".png")
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                return f.read(), "image/png"
+        with self.lock:
+            if time.time() - self.misses.get(bundle, 0) < 86400:
+                return None
+            url = self._lookup(bundle, name[:60])
+            data = None
+            if url and url.startswith(("https://", ITUNES_URL + "/")):
+                try:
+                    url = re.sub(r"/\d+x\d+(bb)?\.(jpg|png)$", "/256x256bb.png", url)   # a 256 px PNG
+                    req = urllib.request.Request(url, headers={"User-Agent": "DeskBuddy"})
+                    with urllib.request.urlopen(req, timeout=10) as r:
+                        data = r.read(2_000_000)
+                except (urllib.error.URLError, OSError):
+                    data = None
+            if not data:
+                self.misses[bundle] = time.time()
+                return None
+            os.makedirs(ICON_DIR, exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(data)
+            return data, "image/png"
+
+
+app_icons = AppIcons()
+
+
 # ---------- Power button: restart / shut down this computer ----------
 POWER_DRY_RUN = os.environ.get("DESKBUDDY_POWER_DRYRUN") == "1"   # for testing
 
@@ -701,6 +772,18 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/calendar":
             return self.send_json(*calendar_cache.status(force="refresh" in self.path))
 
+        if path == "/api/appletv/icon":
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            icon = app_icons.get(q.get("id", [""])[0], q.get("name", [""])[0])
+            if not icon:
+                return self.send_json(404, {"error": "no_icon"})
+            self.send_response(200)
+            self.send_header("Content-Type", icon[1])
+            self.send_header("Cache-Control", "max-age=604800")
+            self.send_header("Content-Length", str(len(icon[0])))
+            self.end_headers()
+            self.wfile.write(icon[0])
+            return
         if path in ("/api/appletv", "/api/appletv/artwork", "/api/appletv/apps"):
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             host = q.get("host", [""])[0].strip()
