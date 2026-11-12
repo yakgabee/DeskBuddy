@@ -112,6 +112,8 @@
     track = null;
     showState(spotifyEmpty || { source: 'Spotify', title: 'Spotify' });
     $('btn-disconnect').hidden = DEMO || !Spotify.isLoggedIn();
+    $('btn-device').hidden = DEMO || !Spotify.isLoggedIn();
+    if (window.DeskSpeakers) DeskSpeakers.show(track && track.source === 'spotify' ? track.device : null);
     $('btn-search').hidden = DEMO || !Spotify.isLoggedIn();
     announce();
   }
@@ -216,6 +218,8 @@
     if (track.id !== renderedId) renderTrack();
     $('np-source').textContent = sourceLabel(track);
     $('btn-disconnect').hidden = DEMO || track.source === 'appletv' || !Spotify.isLoggedIn();
+    $('btn-device').hidden = DEMO || !Spotify.isLoggedIn();
+    if (window.DeskSpeakers) DeskSpeakers.show(track && track.source === 'spotify' ? track.device : null);
     $('btn-search').hidden = DEMO || !Spotify.isLoggedIn();
     renderProgress();
     renderVolume();

@@ -274,6 +274,10 @@ runs on another computer, use that computer's address instead of `127.0.0.1`
 
 ## Spotify notes
 
+**Devices:** tap the device name next to **Search** (e.g. "GABE-PC") to see your Spotify
+devices and move the music to another one. Devices only show up while Spotify is open on
+them (or the speaker is on). Needs Spotify Premium.
+
 **Volume:** drag the slider next to the play buttons, or tap the speaker to mute. It
 changes the volume on whatever device Spotify is playing on. Some devices (like phones)
 don't let apps change their volume; then the slider is hidden.

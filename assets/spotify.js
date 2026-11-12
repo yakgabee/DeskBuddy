@@ -152,6 +152,14 @@
     pause() { return api('/me/player/pause', 'PUT'); },
     next() { return api('/me/player/next', 'POST'); },
     previous() { return api('/me/player/previous', 'POST'); },
+    // Spotify Connect: the devices you can play on (Spotify open on them), and moving playback.
+    async devices() {
+      const d = await api('/me/player/devices');
+      return (d?.devices || []).filter(x => x && x.id).map(x => ({
+        id: x.id, name: x.name, type: x.type || '', active: !!x.is_active, restricted: !!x.is_restricted,
+      }));
+    },
+    transfer(id, play = true) { return api('/me/player', 'PUT', false, { device_ids: [id], play }); },
     setVolume(percent) { return api(`/me/player/volume?volume_percent=${Math.round(percent)}`, 'PUT'); },
 
     // ---------- Search ----------

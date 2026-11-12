@@ -55,6 +55,7 @@
             <div class="np-label">
               <span class="dot"></span><span id="np-source">Spotify</span>
               <button class="link-btn" id="btn-disconnect" hidden>Disconnect</button>
+              <button class="search-btn dev-btn" id="btn-device" hidden><span id="dev-btn-icon" data-icon="speaker" data-size="15"></span><span id="dev-btn-name">Devices</span></button>
               <button class="search-btn" id="btn-search" hidden><span data-icon="search" data-size="15"></span>Search</button>
             </div>
             <div class="np-title" id="np-title">Spotify</div>
@@ -176,6 +177,15 @@
     <div class="osk" id="osk"></div>
   </div>
 
+  <!-- Spotify: pick a device to play on -->
+  <div class="power-menu" id="spk-menu" role="dialog" aria-label="Play on" hidden>
+    <div class="power-card spk-card">
+      <div class="spk-head"><b>Play on</b><button class="link-btn" id="spk-refresh">Refresh</button></div>
+      <div class="spk-list" id="spk-list"></div>
+      <button class="power-item muted" id="spk-close">Close</button>
+    </div>
+  </div>
+
   <!-- Power menu -->
   <div class="power-menu" id="power-menu" hidden>
     <div class="power-card">
@@ -203,6 +213,7 @@
   <script src="assets/spotify.js"></script>
   <script src="assets/lyrics.js"></script>
   <script src="assets/spotify-search.js"></script>
+  <script src="assets/spotify-devices.js"></script>
   <script src="assets/home.js"></script>
   <script src="assets/smart-home.js"></script>
   <script src="assets/lights.js"></script>

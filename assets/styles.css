@@ -542,3 +542,23 @@ html.dragging, html.dragging * { user-select: none; cursor: grabbing; }
 .nba-score.bump { animation: nba-bump 1.6s ease-out; }
 @keyframes nba-bump { 0% { color: #FFD60A; transform: scale(1.25); } 60% { color: #FFD60A; transform: scale(1); } 100% { color: inherit; } }
 .nba-score { display: inline-block; transform-origin: right center; }
+
+/* ---------- Spotify devices ---------- */
+.dev-btn { max-width: 210px; }
+.dev-btn #dev-btn-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dev-btn + .search-btn, #btn-disconnect:not([hidden]) + .dev-btn { margin-left: 4px; }
+.np-label #np-source { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.spk-card { width: min(420px, 90vw); max-height: 86vh; }
+.spk-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 4px; font-size: 17px; }
+.spk-head .link-btn { margin-left: 0; font-size: 13px; }
+.spk-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; }
+.spk-item { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 12px; border-radius: 14px; background: #48484a; text-align: left; color: var(--text); }
+.spk-item.active { background: rgba(30, 215, 96, 0.16); }
+.spk-item.active .spk-icon, .spk-item.active b, .spk-check { color: var(--spotify); }
+.spk-item:disabled:not(.active) { opacity: 0.55; }
+.spk-icon { display: grid; place-items: center; width: 36px; color: var(--muted); }
+.spk-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.spk-text b { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spk-text small { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.spk-text small.type { text-transform: capitalize; }
+.spk-msg { color: var(--muted); font-size: 15px; padding: 10px 12px; margin: 0; line-height: 1.4; }
