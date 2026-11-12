@@ -23,6 +23,7 @@ this file. It is git-ignored and never served to the browser.
 It only listens on 127.0.0.1, so nothing else on your network can reach it.
 """
 import base64
+import calendar
 import concurrent.futures
 import http.cookiejar
 import ipaddress
@@ -428,6 +429,24 @@ def nba_team(c):
     }
 
 
+def nba_tv(comp):
+    """Channels showing the game (e.g. TSN, SN, ESPN), from the feed's broadcast lists."""
+    names = []
+    for g in comp.get("geoBroadcasts") or []:
+        kind = ((g.get("type") or {}).get("shortName") or "TV").upper()
+        name = (g.get("media") or {}).get("shortName")
+        if kind == "TV" and name:
+            names.append(name)
+    for b in comp.get("broadcasts") or []:
+        names += [n for n in b.get("names") or [] if isinstance(n, str)]
+    out = []
+    for n in names:
+        n = n.strip()
+        if n and n.lower() not in (x.lower() for x in out):
+            out.append(n)
+    return out[:4]
+
+
 def nba_games(data):
     out = []
     for ev in data.get("events") or []:
@@ -440,6 +459,7 @@ def nba_games(data):
                 "state": st.get("state", "pre"),                # pre / in / post
                 "detail": st.get("shortDetail") or st.get("detail") or "",
                 "home": sides.get("home"), "away": sides.get("away"),
+                "tv": nba_tv(comp),
             })
         except (AttributeError, IndexError, TypeError):
             continue
@@ -466,10 +486,32 @@ class NBAScores:
                 if self.cache:
                     return 200, dict(self.cache[2], stale=True)   # keep the last scores on a blip
                 return 503, {"error": "unreachable"}
-            live = any(g["state"] == "in" for d in days for g in d["games"])
-            body = {"days": days, "updated": int(time.time())}
-            self.cache = (time.time(), 30 if live else 300, body)   # quick refresh while games are on
+            ttl = self.refresh_in(days)
+            body = {"days": days, "updated": int(time.time()), "refreshIn": ttl}
+            self.cache = (time.time(), ttl, body)
             return 200, body
+
+    @staticmethod
+    def refresh_in(days):
+        """15 s while a game is on (or should have tipped off), else until just before the next tip-off (max 5 min)."""
+        games = [g for d in days for g in d["games"]]
+        if any(g["state"] == "in" for g in games):
+            return 15
+        starts = []
+        for g in games:
+            if g["state"] != "pre" or not g.get("start"):
+                continue
+            try:
+                t = calendar.timegm(time.strptime(g["start"].replace("Z", ""), "%Y-%m-%dT%H:%M"))
+            except ValueError:
+                try:
+                    t = calendar.timegm(time.strptime(g["start"].replace("Z", "")[:19], "%Y-%m-%dT%H:%M:%S"))
+                except ValueError:
+                    continue
+            starts.append(t - time.time())
+        if any(s < 60 for s in starts):
+            return 15      # tip-off time reached: watch for the game to go live
+        return int(min([300] + [s - 60 for s in starts]))
 
 
 nba = NBAScores()

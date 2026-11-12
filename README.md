@@ -105,7 +105,9 @@ work too: add them as `"urls": [...]` inside `"calendar"`.
 
 The **NBA** tab shows today's games (live scores with the game clock, finals and tip-off
 times) and yesterday's results. The scores come from ESPN's public scoreboard, so there's
-nothing to set up. They refresh every 30 seconds while a game is on and every 5 minutes otherwise.
+nothing to set up. Scores update every 15 seconds while a game is on, right at tip-off,
+and every 5 minutes otherwise; a score flashes yellow when it changes. Each game shows
+the channels it's on (TSN in red, Sportsnet in blue) when the feed lists them.
 Your team's games are listed first with a white outline. Change it with `nba.favorite`
 in `assets/config.js` (e.g. `'LAL'`, `'GS'`, `'BOS'`).
 

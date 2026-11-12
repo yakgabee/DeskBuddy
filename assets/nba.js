@@ -6,26 +6,37 @@
   let days = null;
   let error = null;
   let timer = null;
+  let updated = null;
+  const prevScores = {};   // game id -> "away-home", to flash scores that just changed
 
   const tipoff = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });   // e.g. 7:30 PM
   const hasFav = g => favorite && (g.home?.abbr === favorite || g.away?.abbr === favorite);
 
-  function team(t, g) {
+  // Channel labels: Canadian channels get their colours.
+  const TV_CLASS = name => /^TSN/i.test(name) ? 'tsn' : /^(SN|Sportsnet)/i.test(name) ? 'sn' : '';
+  const tvLabels = g => (g.tv || []).map(n => `<span class="nba-tv ${TV_CLASS(n)}">${esc(n)}</span>`).join('');
+
+  function team(t, g, changed) {
     if (!t) return '';
     const lost = g.state === 'post' && !t.winner;
     return `<div class="nba-team ${t.winner ? 'won' : ''} ${lost ? 'lost' : ''}">
       <span class="nba-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${esc(t.abbr)}'.slice(0,3)))">` : esc(t.abbr)}</span>
       <span class="nba-name">${esc(t.name || t.abbr)}<small>${esc(t.record || '')}</small></span>
-      <span class="nba-score">${g.state === 'pre' ? '' : esc(t.score ?? '')}</span>
+      <span class="nba-score ${changed ? 'bump' : ''}">${g.state === 'pre' ? '' : esc(t.score ?? '')}</span>
     </div>`;
   }
 
   function game(g) {
     const status = g.state === 'in' ? `<span class="live-dot"></span>${esc(g.detail)}`
       : g.state === 'pre' ? esc(tipoff(g.start)) : esc(g.detail || 'Final');
+    const key = `${g.away?.score ?? ''}-${g.home?.score ?? ''}`;
+    const before = prevScores[g.id];
+    prevScores[g.id] = key;
+    const changed = before !== undefined && before !== key;
+    const [a0, h0] = (before || '').split('-');
     return `<div class="card nba-game ${g.state} ${hasFav(g) ? 'fav' : ''}">
-      <div class="nba-status">${status}</div>
-      ${team(g.away, g)}${team(g.home, g)}
+      <div class="nba-status"><span class="nba-when">${status}</span><span class="nba-tvs">${tvLabels(g)}</span></div>
+      ${team(g.away, g, changed && a0 !== String(g.away?.score ?? ''))}${team(g.home, g, changed && h0 !== String(g.home?.score ?? ''))}
     </div>`;
   }
 
@@ -50,7 +61,8 @@
     const today = days[0]?.games || [];
     const live = today.filter(g => g.state === 'in').length;
     $('tab-nba').textContent = live || '';
-    $('nba-meta').textContent = live ? `${live} live now` : today.length ? `${today.length} game${today.length > 1 ? 's' : ''} today` : 'No games today';
+    const at = updated ? ` · updated ${new Date(updated * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}` : '';
+    $('nba-meta').textContent = (live ? `${live} live now` : today.length ? `${today.length} game${today.length > 1 ? 's' : ''} today` : 'No games today') + at;
   }
 
   async function load() {
@@ -60,17 +72,21 @@
       else {
         const d = await r.json();
         if (d.error) { if (!days) error = d.error; }
-        else { error = null; days = d.days || []; }
+        else { error = null; days = d.days || []; updated = d.updated || null; refreshIn = d.refreshIn || 300; }
       }
     } catch (e) {
       if (!days) error = 'no_server';
     }
     render();
-    // Every 30 s while a game is on, every 5 min otherwise.
-    const live = (days || []).some(d => d.games.some(g => g.state === 'in'));
+    // The server says when there'll be news: every 15 s during games, at tip-off, else 5 min.
     clearTimeout(timer);
-    timer = setTimeout(load, live ? 30e3 : 300e3);
+    timer = setTimeout(load, (Math.max(10, refreshIn) + 1) * 1000);
   }
+  let refreshIn = 300;
+
+  // Opening the tab, or the Pi waking up, shows the latest scores right away.
+  window.addEventListener('deskbuddy:tab', e => { if (e.detail === 'nba') load(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 
   render();
   load();
