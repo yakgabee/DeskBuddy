@@ -520,6 +520,44 @@ class NBAScores:
 nba = NBAScores()
 
 
+# The league logo for the NBA tab: the one ESPN's scoreboard feed links to, downloaded
+# once into .cache (not git). The tab shows a basketball if it can't be fetched.
+NBA_LOGO = os.path.join(ROOT, ".cache", "nba-logo.png")
+_nba_logo_lock = threading.Lock()
+_nba_logo_miss = [0.0]
+
+
+def nba_logo():
+    if os.path.exists(NBA_LOGO):
+        with open(NBA_LOGO, "rb") as f:
+            return f.read()
+    with _nba_logo_lock:
+        if time.time() - _nba_logo_miss[0] < 3600:
+            return None
+        try:
+            data = fetch_json(NBA_URL, timeout=8)
+            logos = ((data.get("leagues") or [{}])[0].get("logos") or [])
+            # Prefer the regular full-colour logo over the dark-mode one.
+            logo = next((l for l in logos if "default" in (l.get("rel") or []) and "dark" not in (l.get("rel") or [])), None) \
+                or (logos[0] if logos else None)
+            url = (logo or {}).get("href") or ""
+            feed = urllib.parse.urlsplit(NBA_URL)
+            if not url.startswith(("https://", f"{feed.scheme}://{feed.netloc}/")):
+                raise ValueError("no logo")
+            req = urllib.request.Request(url, headers={"User-Agent": "DeskBuddy"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                img = r.read(1_000_000)
+            if not img:
+                raise ValueError("empty")
+        except (urllib.error.URLError, OSError, ValueError, AttributeError, IndexError):
+            _nba_logo_miss[0] = time.time()
+            return None
+        os.makedirs(os.path.dirname(NBA_LOGO), exist_ok=True)
+        with open(NBA_LOGO, "wb") as f:
+            f.write(img)
+        return img
+
+
 # ---------- Lights: Alexa routines triggered through Voice Monkey ----------
 # Voice Monkey (voicemonkey.io) is an Alexa skill: each "trigger device" you make there
 # can start an Alexa routine, and the routine turns your light on, off, dims it, etc.
@@ -767,6 +805,17 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*weather.status())
         if path == "/api/lights":
             return self.send_json(200, lights.status())
+        if path == "/api/nba/logo":
+            img = nba_logo()
+            if not img:
+                return self.send_json(404, {"error": "no_logo"})
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "max-age=604800")
+            self.send_header("Content-Length", str(len(img)))
+            self.end_headers()
+            self.wfile.write(img)
+            return
         if path == "/api/nba":
             return self.send_json(*nba.status())
         if path == "/api/calendar":

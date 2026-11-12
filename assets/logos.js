@@ -17,8 +17,10 @@
       const dot = (x, y, on) => `<circle cx="${x}" cy="${y}" r="2.1" fill="#fff" opacity="${on ? 1 : 0.3}"/>`;
       return tile('#242424', [dot(6.5, 6.5), dot(12, 6.5), dot(17.5, 6.5), dot(6.5, 12, 1), dot(12, 12, 1), dot(17.5, 12, 1), dot(6.5, 17.5), dot(12, 17.5, 1), dot(17.5, 17.5)].join(''));
     },
-    nba: () => tile('#EE6730', `<circle cx="12" cy="12" r="7" fill="none" stroke="#000" stroke-width="1.3"/>
-      <path d="M5 12h14M12 5v14M7.1 7a7.5 7.5 0 0 1 0 10M16.9 7a7.5 7.5 0 0 0 0 10" fill="none" stroke="#000" stroke-width="1.3"/>`),
+    // The league's own logo (from ESPN's feed, cached by server.py); a basketball until it loads or if it can't.
+    nba: () => `<span class="logo logo-img"><img src="/api/nba/logo" alt="" onload="this.parentNode.classList.add('ok')" onerror="this.remove()">${
+      tile('#EE6730', `<circle cx="12" cy="12" r="7" fill="none" stroke="#000" stroke-width="1.3"/>
+      <path d="M5 12h14M12 5v14M7.1 7a7.5 7.5 0 0 1 0 10M16.9 7a7.5 7.5 0 0 0 0 10" fill="none" stroke="#000" stroke-width="1.3"/>`)}</span>`,
     calendar: () => {
       const now = new Date();
       return `<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#fff"/>
@@ -28,7 +30,9 @@
     },
   };
   window.logo = name => (LOGOS[name] ? LOGOS[name]() : '');
-  const fill = () => document.querySelectorAll('[data-logo]').forEach(el => { el.innerHTML = logo(el.dataset.logo); });
-  fill();
-  setInterval(fill, 60 * 1000); // keeps the clock and the calendar's date current
+  const fill = (first) => document.querySelectorAll('[data-logo]').forEach(el => {
+    if (first || el.dataset.logo === 'clock' || el.dataset.logo === 'calendar') el.innerHTML = logo(el.dataset.logo);
+  });
+  fill(true);
+  setInterval(() => fill(false), 60 * 1000); // keeps the clock and the calendar's date current
 })();
