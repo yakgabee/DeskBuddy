@@ -540,6 +540,7 @@ html.dragging, html.dragging * { user-select: none; cursor: grabbing; }
 .nba-tv { font-family: var(--sans); font-size: 10px; font-weight: 700; letter-spacing: 0.02em; text-transform: none; padding: 2px 6px; border-radius: 4px; background: #48484a; color: #fff; }
 .nba-tv.tsn { background: #D2232A; }
 .nba-tv.sn { background: #0057B8; }
+.nba-tv.nbalp { background: #fff; color: #1D428A; }
 .nba-score.bump { animation: nba-bump 1.6s ease-out; }
 @keyframes nba-bump { 0% { color: #FFD60A; transform: scale(1.25); } 60% { color: #FFD60A; transform: scale(1); } 100% { color: inherit; } }
 .nba-score { display: inline-block; transform-origin: right center; }

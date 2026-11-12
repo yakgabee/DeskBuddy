@@ -12,9 +12,16 @@
   const tipoff = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });   // e.g. 7:30 PM
   const hasFav = g => favorite && (g.home?.abbr === favorite || g.away?.abbr === favorite);
 
-  // Channel labels: Canadian channels get their colours.
-  const TV_CLASS = name => /^TSN/i.test(name) ? 'tsn' : /^(SN|Sportsnet)/i.test(name) ? 'sn' : '';
-  const tvLabels = g => (g.tv || []).map(n => `<span class="nba-tv ${TV_CLASS(n)}">${esc(n)}</span>`).join('');
+  // One label per game, for watching in Canada: TSN or Sportsnet when the feed lists
+  // either (whichever it lists first), otherwise NBA League Pass (NBA+).
+  function channel(g) {
+    for (const n of g.tv || []) {
+      if (/^TSN/i.test(n)) return ['TSN', 'tsn'];
+      if (/^(SN|Sportsnet)/i.test(n)) return ['SN', 'sn'];
+    }
+    return ['NBA+', 'nbalp'];
+  }
+  const tvLabels = g => { const [label, cls] = channel(g); return `<span class="nba-tv ${cls}">${label}</span>`; };
 
   function team(t, g, changed) {
     if (!t) return '';
