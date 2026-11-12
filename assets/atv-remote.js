@@ -34,10 +34,19 @@
     } catch (e) { return { error: 'failed' }; }
   }
 
+  // What to tell you when the Apple TV can't be controlled.
+  function problem(err) {
+    const st = status && status.state;
+    if (err === 'not_installed' || st === 'not_installed') return 'Apple TV support isn\'t installed on the Pi: run ./setup-pi.sh (step 5)';
+    if (err === 'not_paired' || st === 'not_paired') return 'The Apple TV isn\'t paired yet: run ./setup-pi.sh (step 5) with the TV on';
+    if (st === 'unreachable' || st === 'no_server') return 'Can\'t reach the Apple TV. Is it on and on the same Wi-Fi?';
+    return 'The Apple TV didn\'t respond. Try again in a moment.';
+  }
+
   async function send(cmd, el) {
     if (el) { el.classList.add('pressed'); setTimeout(() => el.classList.remove('pressed'), 150); }
     const r = await post({ action: cmd });
-    if (r.error) toast(r.error === 'not_paired' ? 'Pair the Apple TV first (./setup-pi.sh)' : 'Couldn\'t reach the Apple TV');
+    if (r.error) toast(problem(r.error));
     if (cmd === 'turn_on' || cmd === 'turn_off') setTimeout(refresh, 800);
   }
 
@@ -123,7 +132,7 @@
     toast(`Opening ${app.name}…`);
     if (status && status.power === 'off') await post({ action: 'turn_on' });
     const r = await post({ action: 'launch', app: app.id });
-    if (r.error) toast(`Couldn't open ${app.name}`);
+    if (r.error) toast(r.error === 'unknown_app' ? `Couldn't open ${app.name}` : problem(r.error));
     showAll(false);
   }
 
