@@ -48,7 +48,7 @@ fi
 
 # A fresh browser cache on every start (your Spotify login is kept; it isn't in the cache).
 rm -rf "$DIR/.cache/chromium"
-set -- "$BROWSER" $OZONE --kiosk --noerrdialogs --disable-infobars --hide-crash-restore-bubble \
+set -- "$BROWSER" $OZONE --touch-events=enabled --kiosk --noerrdialogs --disable-infobars --hide-crash-restore-bubble \
   --password-store=basic --check-for-update-interval=31536000 \
   --disk-cache-dir="$DIR/.cache/chromium" "http://127.0.0.1:9090/?kiosk"
 

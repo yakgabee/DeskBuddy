@@ -528,3 +528,7 @@ html, * { scrollbar-width: none; }
 .vol-slider::-moz-range-track { height: 4px; border-radius: 999px; background: var(--surface-3); }
 .vol-slider::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--text); }
 .vol-slider::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; }
+
+/* Drag to scroll (drag-scroll.js) */
+html.dragging, html.dragging * { user-select: none; cursor: grabbing; }
+.stage, .search-results, .lyrics-body, .tabs, .search-tabs { overscroll-behavior: contain; }

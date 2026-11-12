@@ -219,6 +219,7 @@
   // Scrolling the results tucks the keyboard away to show more of them.
   $('search-results').addEventListener('touchmove', () => showKeyboard(false), { passive: true });
   $('search-results').addEventListener('wheel', () => showKeyboard(false), { passive: true });
+  $('search-results').addEventListener('dragscroll', () => showKeyboard(false));
 
   $('search-tabs').addEventListener('click', e => {
     const chip = e.target.closest('.chip');
