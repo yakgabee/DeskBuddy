@@ -562,3 +562,48 @@ html.dragging, html.dragging * { user-select: none; cursor: grabbing; }
 .spk-text small { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 .spk-text small.type { text-transform: capitalize; }
 .spk-msg { color: var(--muted); font-size: 15px; padding: 10px 12px; margin: 0; line-height: 1.4; }
+
+/* ---------- Apple TV remote ---------- */
+.atv-open { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; color: inherit; border-radius: 10px; }
+.atv-open:active { opacity: 0.7; }
+.atv-remote-btn { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; align-self: flex-start; margin-left: auto; }
+.atv-remote-btn + .atv-power { margin-left: 6px; }
+.remote { position: fixed; inset: 0; z-index: 56; background: var(--sheet-bg); display: flex; flex-direction: column; gap: 10px; padding: clamp(10px, 2.2vh, 20px) var(--pad) 0; }
+.remote[hidden] { display: none; }
+.remote-head { display: flex; align-items: center; gap: 10px; }
+.remote-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.remote-title b { font-size: 18px; font-weight: 700; }
+.remote-title span { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-search { flex: 0 0 auto; height: clamp(40px, 7.5vh, 50px); }
+.rm-hint { margin: -4px 4px 0; font-size: 13px; color: #FFD60A; }
+.rm-hint[hidden] { display: none; }
+.remote-body { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr; gap: clamp(14px, 3vw, 36px); align-items: center; padding-bottom: clamp(10px, 2vh, 20px); }
+.remote-body[hidden] { display: none; }
+.rm-left { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.dpad { position: relative; width: min(42vh, 30vw, 260px); aspect-ratio: 1; border-radius: 50%; background: #2c2c2e; border: 1px solid rgba(255,255,255,0.08); touch-action: none; user-select: none; cursor: pointer; }
+.dpad-center { position: absolute; inset: 31%; border-radius: 50%; background: #48484a; transition: background 0.12s; }
+.dpad-arrow { position: absolute; width: 0; height: 0; border: 7px solid transparent; opacity: 0.55; transition: opacity 0.12s; }
+.dpad-arrow.up { top: 9%; left: 50%; transform: translateX(-50%); border-bottom: 9px solid #fff; border-top: 0; }
+.dpad-arrow.down { bottom: 9%; left: 50%; transform: translateX(-50%); border-top: 9px solid #fff; border-bottom: 0; }
+.dpad-arrow.left { left: 9%; top: 50%; transform: translateY(-50%); border-right: 9px solid #fff; border-left: 0; }
+.dpad-arrow.right { right: 9%; top: 50%; transform: translateY(-50%); border-left: 9px solid #fff; border-right: 0; }
+.dpad[data-flash="select"] .dpad-center { background: #8e8e93; }
+.dpad[data-flash="up"] .dpad-arrow.up, .dpad[data-flash="down"] .dpad-arrow.down,
+.dpad[data-flash="left"] .dpad-arrow.left, .dpad[data-flash="right"] .dpad-arrow.right { opacity: 1; filter: drop-shadow(0 0 6px #fff); }
+.rm-keys { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: min(46vh, 34vw, 300px); }
+.rm-key { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 52px; height: 42px; padding: 0 10px; border-radius: 999px; background: #48484a; color: var(--text); font-size: 13px; font-weight: 600; transition: transform 0.1s, background 0.1s; }
+.rm-key.pressed, .rm-key:active { transform: scale(0.94); background: #636366; }
+.rm-right { min-width: 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.rm-apps { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(8px, 1.6vw, 16px); }
+.rm-app { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; color: var(--text); }
+.rm-app-tile { width: 100%; aspect-ratio: 16 / 9; max-height: 13vh; border-radius: 12px; background: var(--app); color: var(--app-text); display: grid; place-items: center; font-weight: 800; font-size: clamp(13px, 2.6vh, 18px); letter-spacing: -0.01em; box-shadow: 0 2px 10px rgba(0,0,0,0.25); transition: transform 0.1s; }
+.rm-app:active .rm-app-tile { transform: scale(0.95); }
+.rm-app small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rm-app.missing { opacity: 0.4; }
+.rm-allapps { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+.rm-allapps[hidden] { display: none; }
+.rm-applist { display: flex; flex-wrap: wrap; gap: 8px; }
+.rm-applist .chip { padding: 10px 16px; font-size: 14px; }
+.remote .osk[hidden] { display: none; }
+.remote.typing .rm-search { box-shadow: 0 0 0 2px var(--spotify); }
+.remote.asleep .dpad, .remote.asleep .rm-keys { opacity: 0.5; }

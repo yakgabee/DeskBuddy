@@ -10,7 +10,9 @@ back to) and adds:
   GET /api/ping?host= ->  is a device on your home network online?
   GET /api/appletv?host=          ->  Apple TV: awake/asleep and what's playing
   GET /api/appletv/artwork?host=  ->  artwork for what's playing
-  POST /api/appletv               ->  {"host", "action"}: play_pause, next, previous, turn_on, turn_off
+  GET /api/appletv/apps?host=     ->  apps installed on the Apple TV
+  POST /api/appletv               ->  {"host", "action"}: remote buttons (play_pause, up, select, home, …),
+                                      {"action": "launch", "app": id}, {"action": "text", "text": "…"}
   GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
   POST /api/power     ->  {"action": "reboot" | "shutdown"} for the power button
   GET /api/nba        ->  today's and yesterday's NBA games (ESPN's public scoreboard)
@@ -699,7 +701,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/calendar":
             return self.send_json(*calendar_cache.status(force="refresh" in self.path))
 
-        if path in ("/api/appletv", "/api/appletv/artwork"):
+        if path in ("/api/appletv", "/api/appletv/artwork", "/api/appletv/apps"):
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             host = q.get("host", [""])[0].strip()
             if not host or not home_network_host(host):
@@ -707,6 +709,8 @@ class Handler(SimpleHTTPRequestHandler):
             mod, client = appletv()
             if path == "/api/appletv":
                 return self.send_json(200, client.status(host))
+            if path == "/api/appletv/apps":
+                return self.send_json(200, client.apps(host))
             art = client.artwork_for(host, q.get("id", [""])[0])
             if not art:
                 return self.send_json(404, {"error": "no_artwork"})
@@ -775,9 +779,16 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200, {"ok": True}) if power(action) else self.send_json(503, {"error": "not_allowed"})
         mod, client = appletv()
         host, action = (body.get("host"), body.get("action")) if isinstance(body, dict) else (None, None)
-        if not isinstance(host, str) or not home_network_host(host) or action not in mod.COMMANDS:
+        if not isinstance(host, str) or not home_network_host(host):
             return self.send_json(400, {"error": "bad_request"})
-        result = client.command(host, action)
+        if action == "launch" and isinstance(body.get("app"), str):
+            result = client.launch(host, body["app"])
+        elif action == "text" and isinstance(body.get("text"), str) and len(body["text"]) <= 200:
+            result = client.text(host, body["text"])
+        elif action in mod.COMMANDS:
+            result = client.command(host, action)
+        else:
+            return self.send_json(400, {"error": "bad_request"})
         self.send_json(200 if result.get("ok") else 503, result)
 
     def end_headers(self):

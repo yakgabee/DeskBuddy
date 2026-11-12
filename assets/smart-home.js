@@ -71,14 +71,15 @@
       </div>` : s ? `<div class="dev-sub">${awake ? 'Nothing playing' : 'Sleeping'}</div>` : '';
     const hint = atv && ATV_HINT[atv.state] ? `<p class="server-hint">${ATV_HINT[atv.state]}</p>` : '';
     const power = s ? `<button class="open-btn atv-power" data-atv="${awake ? 'turn_off' : 'turn_on'}">${icon('power', 14)}${awake ? 'Sleep' : 'Turn on'}</button>` : '';
+    const remote = window.DeskRemote ? `<button class="open-btn atv-remote-btn" data-remote>${icon('gamepad', 14)}Remote</button>` : '';
     return `<article class="dev card wide atv ${d.status}">
       <div class="dev-top">
         <div class="dev-icon">${icon(d.icon || 'tv', 28)}</div>
-        <div class="grow">
-          <div class="dev-name">${esc(d.name)}</div>
+        <button class="grow atv-open" data-remote aria-label="Open the Apple TV remote">
+          <span class="dev-name">${esc(d.name)}</span>
           <span class="status ${statusClass}">${label}</span>
-        </div>
-        ${power}
+        </button>
+        ${remote}${power}
       </div>
       ${np}${hint}
       <div class="dev-sub"><code>${esc(d.host)}</code>${d.status === 'online' && d.ms != null ? ` · ${d.ms} ms` : ''}</div>
@@ -125,6 +126,7 @@
     renderDevices();
   }
   $('devices').addEventListener('click', async e => {
+    if (e.target.closest('[data-remote]') && window.DeskRemote) return DeskRemote.open();
     const b = e.target.closest('[data-atv]');
     if (!b || !atvDevice) return;
     b.disabled = true;

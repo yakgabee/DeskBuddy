@@ -186,6 +186,42 @@
     </div>
   </div>
 
+  <!-- Apple TV remote -->
+  <div class="remote" id="atv-remote" role="dialog" aria-label="Apple TV remote" hidden>
+    <div class="remote-head">
+      <div class="remote-title"><b id="rm-name">Apple TV</b><span class="muted" id="rm-np"></span></div>
+      <button class="open-btn" id="rm-power"></button>
+      <button class="close-btn" id="rm-close" aria-label="Close remote" data-icon="x"></button>
+    </div>
+    <label class="search-field rm-search">
+      <span data-icon="search" data-size="18"></span>
+      <input id="rm-text" type="text" placeholder="Type on the TV" autocomplete="off" spellcheck="false" inputmode="none">
+      <button class="search-clear" id="rm-text-clear" aria-label="Clear" data-icon="x" data-size="16" hidden></button>
+    </label>
+    <p class="rm-hint" id="rm-hint" hidden></p>
+    <div class="remote-body" id="rm-body">
+      <div class="rm-left">
+        <div class="dpad" id="rm-pad" aria-label="Touch pad: tap the edges to move, the middle to select, or swipe">
+          <span class="dpad-arrow up"></span><span class="dpad-arrow down"></span><span class="dpad-arrow left"></span><span class="dpad-arrow right"></span>
+          <span class="dpad-center"></span>
+        </div>
+        <div class="rm-keys">
+          <button class="rm-key" data-cmd="menu"><span data-icon="arrowLeft" data-size="18"></span>Back</button>
+          <button class="rm-key" data-cmd="home"><span data-icon="tv" data-size="18"></span>Home</button>
+          <button class="rm-key" data-cmd="play_pause" aria-label="Play/Pause"><span data-icon="play" data-size="16"></span><span data-icon="pause" data-size="16"></span></button>
+          <button class="rm-key" data-cmd="volume_down" aria-label="Volume down"><span data-icon="volumeLow" data-size="18"></span>−</button>
+          <button class="rm-key" data-cmd="volume_up" aria-label="Volume up"><span data-icon="volume" data-size="18"></span>+</button>
+        </div>
+      </div>
+      <div class="rm-right">
+        <div class="rm-apps" id="rm-apps"></div>
+        <button class="chip rm-all" id="rm-all-btn">All apps</button>
+      </div>
+    </div>
+    <div class="rm-allapps" id="rm-allapps" hidden></div>
+    <div class="osk" id="rm-osk" hidden></div>
+  </div>
+
   <!-- Power menu -->
   <div class="power-menu" id="power-menu" hidden>
     <div class="power-card">
@@ -216,6 +252,7 @@
   <script src="assets/spotify-devices.js"></script>
   <script src="assets/home.js"></script>
   <script src="assets/smart-home.js"></script>
+  <script src="assets/atv-remote.js"></script>
   <script src="assets/lights.js"></script>
   <script src="assets/calendar.js"></script>
   <script src="assets/nba.js"></script>

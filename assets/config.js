@@ -45,6 +45,16 @@ window.DESKBUDDY_CONFIG = {
   // port (optional): a port the device always has open, for a more reliable check
   //   (Apple TV: 7000 for AirPlay; Windows PC with uTorrent's Web UI: 8080).
   // appletv: true shows what's playing and remote buttons (needs pyatv; see README).
+  // Apple TV remote: app buttons. Each is matched by name with the apps installed on the
+  // Apple TV (the first name in "match" that's installed wins).
+  appletvApps: [
+    { name: 'YouTube', match: ['YouTube'], color: '#FF0033' },
+    { name: 'Spotify', match: ['Spotify'], color: '#1ED760', text: '#000' },
+    { name: 'Jellyfin', match: ['Jellyfin', 'Swiftfin', 'Infuse'], color: '#7B4FD8' },
+    { name: 'TSN', match: ['TSN'], color: '#C8102E' },
+    { name: 'Sportsnet', match: ['Sportsnet', 'Sportsnet+', 'SN NOW'], color: '#0057B8' },
+  ],
+
   devices: [
     { id: 'apple-tv', name: 'Apple TV', icon: 'tv', host: '10.0.10.118', port: 7000, appletv: true },
   ],

@@ -189,6 +189,19 @@ The pairing is saved in `~/.pyatv.conf`. If pairing fails, check the Apple TV's
 Network* (or *Everyone*). Some apps don't share what's playing; then the card shows
 the app name or just "Playing".
 
+
+### Remote
+
+Tap the Apple TV's name (or **Remote**) on the Devices tab to open a full-screen remote:
+
+- **Touch pad:** tap an edge to move, the middle to select, or swipe.
+- **Back, Home, play/pause and volume** buttons.
+- **App buttons:** YouTube, Spotify, Jellyfin, TSN and Sportsnet open on the TV (matched by
+  name with the apps installed; Jellyfin also matches Swiftfin). Change them under
+  `appletvApps` in `assets/config.js`. **All apps** lists everything installed.
+- **Type on the TV:** open a search box on the TV (e.g. YouTube's search), then type in the
+  bar at the top with the on-screen keyboard; the text appears on the TV as you type.
+
 ## Show a server's RAM and storage
 
 `agent/deskbuddy-agent.py` is a tiny read-only helper that reports a computer's RAM

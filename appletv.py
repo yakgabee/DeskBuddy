@@ -56,6 +56,7 @@ class AppleTVClient:
         self.lock = None
         self.failed_at = {}     # host -> (time, state) of the last failed connect
         self.artwork = None     # (artwork_id, bytes, mimetype)
+        self.app_cache = {}     # host -> (time, [{"name", "id"}])
 
     # Called by pyatv when the connection drops.
     def connection_lost(self, exception):
@@ -147,6 +148,10 @@ class AppleTVClient:
             out["artworkId"] = atv.metadata.artwork_id if state != "idle" else None
         except Exception:
             out["artworkId"] = None
+        try:  # is a text field (like a search box) open on the TV?
+            out["keyboard"] = {"Focused": "focused", "Unfocused": "unfocused"}.get(atv.keyboard.text_focus_state.name, "unknown")
+        except Exception:
+            out["keyboard"] = "unknown"
         return out
 
     def status(self, host):
@@ -180,9 +185,15 @@ class AppleTVClient:
     async def _command(self, host, action):
         atv = await self._connect(host)
         rc, power = atv.remote_control, atv.power
+        if action in ("volume_up", "volume_down"):
+            audio = getattr(atv, "audio", None)   # newer pyatv: volume lives in .audio
+            target = audio if audio is not None and hasattr(audio, action) else rc
+            return await getattr(target, action)()
         await {
             "play_pause": rc.play_pause, "next": rc.next, "previous": rc.previous,
             "turn_on": power.turn_on, "turn_off": power.turn_off,
+            "up": rc.up, "down": rc.down, "left": rc.left, "right": rc.right,
+            "select": rc.select, "menu": rc.menu, "home": rc.home,
         }[action]()
 
     def command(self, host, action):
@@ -197,7 +208,69 @@ class AppleTVClient:
             return {"error": "failed"}
 
 
-COMMANDS = {"play_pause", "next", "previous", "turn_on", "turn_off"}
+    # ---------- apps ----------
+    async def _apps(self, host):
+        cached = self.app_cache.get(host)
+        if cached and time.time() - cached[0] < 600:
+            return cached[1]
+        atv = await self._connect(host)
+        apps = sorted(({"name": a.name, "id": a.identifier} for a in await atv.apps.app_list() if a.name and a.identifier),
+                      key=lambda a: a["name"].lower())
+        self.app_cache[host] = (time.time(), apps)
+        return apps
+
+    def apps(self, host):
+        """Apps installed on the Apple TV: {"apps": [{"name", "id"}]} or {"error"}."""
+        if pyatv is None:
+            return {"error": "not_installed"}
+        try:
+            return {"apps": self.run(self._locked(lambda: self._apps(host)))}
+        except NotPaired:
+            return {"error": "not_paired"}
+        except Exception:
+            return {"error": "failed"}
+
+    def launch(self, host, app_id):
+        if pyatv is None:
+            return {"error": "not_installed"}
+        try:
+            known = {a["id"] for a in self.run(self._locked(lambda: self._apps(host)))}
+            if app_id not in known:
+                return {"error": "unknown_app"}
+
+            async def go():
+                atv = await self._connect(host)
+                await atv.apps.launch_app(app_id)
+            self.run(self._locked(go))
+            return {"ok": True}
+        except NotPaired:
+            return {"error": "not_paired"}
+        except Exception:
+            return {"error": "failed"}
+
+    # ---------- typing into the TV's search box ----------
+    def text(self, host, text):
+        if pyatv is None:
+            return {"error": "not_installed"}
+
+        async def go():
+            atv = await self._connect(host)
+            if text:
+                await atv.keyboard.text_set(text)
+            else:
+                await atv.keyboard.text_clear()
+        try:
+            self.run(self._locked(go))
+            return {"ok": True}
+        except NotPaired:
+            return {"error": "not_paired"}
+        except Exception:
+            # Usually: no text field is open on the TV.
+            return {"error": "no_text_field"}
+
+
+COMMANDS = {"play_pause", "next", "previous", "turn_on", "turn_off",
+            "up", "down", "left", "right", "select", "menu", "home", "volume_up", "volume_down"}
 
 
 # ---------- one-time pairing (run from a terminal) ----------
