@@ -47,7 +47,8 @@
     armed = null;
     menu.querySelectorAll('[data-power]').forEach(b => {
       b.classList.remove('confirm');
-      b.textContent = { screen: 'Turn screen off', reboot: 'Restart Pi', shutdown: 'Shut down Pi', cancel: 'Cancel' }[b.dataset.power];
+      b.textContent = { screen: 'Turn screen off', restart_app: 'Restart DeskBuddy', quit_app: 'Close DeskBuddy',
+        reboot: 'Restart Pi', shutdown: 'Shut down Pi', cancel: 'Cancel' }[b.dataset.power];
     });
   }
   $('power').onclick = () => { closeMenu(); menu.hidden = false; };
@@ -61,15 +62,25 @@
       $('screen-off').hidden = false;
       return;
     }
+    if (act === 'restart_app') {               // safe: one tap, comes straight back
+      b.textContent = 'Restarting DeskBuddy…';
+      try {
+        const r = await fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: act }) });
+        if (!r.ok) throw new Error();
+      } catch (err) {
+        location.reload();                     // the server isn't answering: at least reload the page
+      }
+      return;
+    }
     if (armed !== act) {                       // first tap: ask to confirm
       closeMenu();
       menu.hidden = false;
       armed = act;
       b.classList.add('confirm');
-      b.textContent = act === 'reboot' ? 'Tap again to restart' : 'Tap again to shut down';
+      b.textContent = act === 'reboot' ? 'Tap again to restart' : act === 'quit_app' ? 'Tap again to close' : 'Tap again to shut down';
       return;
     }
-    b.textContent = act === 'reboot' ? 'Restarting…' : 'Shutting down…';
+    b.textContent = act === 'reboot' ? 'Restarting…' : act === 'quit_app' ? 'Closing…' : 'Shutting down…';
     try {
       const r = await fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: act }) });
       if (!r.ok) throw new Error();

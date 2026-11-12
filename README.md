@@ -318,3 +318,9 @@ this was added, tap **Reconnect Spotify** in search once.)
 ## Status
 
 - Clock, Spotify, lyrics, server checks, uTorrent downloads, Tailscale devices: **live**.
+
+## Power button
+
+The power menu also has **Restart DeskBuddy** (one tap: restarts the dashboard and its
+server, handy if something gets stuck) and **Close DeskBuddy** (tap twice: closes the
+full-screen dashboard; start it again with `./kiosk.sh` or by restarting the Pi).

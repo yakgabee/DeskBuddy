@@ -43,22 +43,32 @@
     return saved;
   }
 
-  // Returns a valid access token. Only logs out when Spotify itself rejects the
-  // login — a Wi-Fi blip keeps you logged in and just retries later.
+  // Returns a valid access token. Only one renewal runs at a time: Spotify replaces the
+  // refresh token on every renewal, so two at once would make the second one fail and
+  // look like a logout. A Wi-Fi blip keeps you logged in and just retries later.
+  let refreshing = null;
   async function accessToken(forceRefresh = false) {
     const s = store.get();
     if (!s) throw fail('Not logged in', 'auth');
     if (!forceRefresh && Date.now() < s.expiresAt) return s.accessToken;
-    try {
-      return (await tokenRequest({ grant_type: 'refresh_token', refresh_token: s.refreshToken })).accessToken;
-    } catch (e) {
-      if (e.code === 'auth') store.clear();
-      throw e;
+    if (!refreshing) {
+      const used = s.refreshToken;
+      refreshing = tokenRequest({ grant_type: 'refresh_token', refresh_token: used })
+        .then(t => t.accessToken)
+        .catch(e => {
+          // Already renewed elsewhere (e.g. by a second window)? Then use that login.
+          const now = store.get();
+          if (now && now.refreshToken !== used && Date.now() < now.expiresAt) return now.accessToken;
+          if (e.code === 'auth') store.clear();
+          throw e;
+        })
+        .finally(() => { refreshing = null; });
     }
+    return refreshing;
   }
 
-  async function api(path, method = 'GET', retried = false, body = null) {
-    const token = await accessToken(retried);
+  async function api(path, method = 'GET', retried = false, body = null, renew = retried) {
+    const token = await accessToken(renew);
     let res;
     try {
       res = await fetch(API + path, {
@@ -69,6 +79,8 @@
       throw fail('Can\'t reach Spotify', 'network');
     }
     if (res.status === 401) {
+      // Renewed by another request in the meantime? Retry with the new token instead of renewing again.
+      if (!retried && store.get()?.accessToken && store.get().accessToken !== token) return api(path, method, true, body, false);
       if (!retried) return api(path, method, true, body); // token went stale early: refresh once
       store.clear();
       throw fail('Spotify login expired', 'auth');

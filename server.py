@@ -15,7 +15,7 @@ back to) and adds:
   POST /api/appletv               ->  {"host", "action"}: remote buttons (play_pause, up, select, home, …),
                                       {"action": "launch", "app": id}, {"action": "text", "text": "…"}
   GET /api/calendar   ->  upcoming events (iCloud / calendar links, see calendar_sync.py)
-  POST /api/power     ->  {"action": "reboot" | "shutdown"} for the power button
+  POST /api/power     ->  {"action": "reboot" | "shutdown" | "restart_app" | "quit_app"} for the power button
   GET /api/nba        ->  today's and yesterday's NBA games (ESPN's public scoreboard)
   GET /api/lights     ->  your Alexa lights (via Voice Monkey) and what was last sent
   POST /api/lights    ->  {"light": 0, "action": "on" | "off" | "scene0"…}
@@ -754,6 +754,24 @@ def power(action):
     return False
 
 
+def app_control(action):
+    """Restart DeskBuddy (runs kiosk.sh again: fresh server and browser) or close it."""
+    if POWER_DRY_RUN:
+        print(f"[dry run] would {action}", flush=True)
+        return True
+
+    def later():
+        time.sleep(0.4)   # let the answer reach the page first
+        if action == "restart_app":
+            subprocess.Popen(["sh", os.path.join(ROOT, "kiosk.sh")], cwd=ROOT, start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(["pkill", "-f", "--", r"--kiosk .*127\.0\.0\.1:9090"], capture_output=True)
+            os._exit(0)
+    threading.Thread(target=later, daemon=True).start()
+    return True
+
+
 # ---------- Apple TV (pyatv) ----------
 _appletv = None
 
@@ -906,6 +924,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(*lights.send(body.get("light"), body.get("action")))
         if path == "/api/power":
             action = body.get("action") if isinstance(body, dict) else None
+            if action in ("restart_app", "quit_app"):
+                return self.send_json(200, {"ok": app_control(action)})
             if action not in ("reboot", "shutdown"):
                 return self.send_json(400, {"error": "bad_request"})
             return self.send_json(200, {"ok": True}) if power(action) else self.send_json(503, {"error": "not_allowed"})
